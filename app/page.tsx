@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { removeFromCart } from './utils/cart';
+import { fetchUserProfile } from './utils/api';
 
 // 임시: cart 함수들 직접 정의
 interface CartItem {
@@ -36,38 +37,14 @@ function saveCart(items: CartItem[]): void {
   }
 }
 
-function addToCart(item: Omit<CartItem, 'quantity' | 'addedAt'>): void {
-  const currentItems = getCart();
-  const existingItem = currentItems.find(cartItem => cartItem.id === item.id);
+const WISHLIST_KEY = 'jikgumate_wishlist';
 
-  if (existingItem) {
-    existingItem.quantity += 1;
-  } else {
-    const newItem: CartItem = {
-      ...item,
-      quantity: 1,
-      addedAt: new Date().toISOString(),
-    };
-    currentItems.push(newItem);
-  }
-
-  saveCart(currentItems);
-}
-
-function isInCart(id: number): boolean {
-  const currentItems = getCart();
-  return currentItems.some(item => item.id === id);
-}
-
-// 임시: wishlist 함수들 직접 정의
 interface WishlistItem {
   id: number;
   title: string;
   image: string;
   price: string;
 }
-
-const WISHLIST_KEY = 'jikgumate_wishlist';
 
 function getWishlist(): WishlistItem[] {
   if (typeof window === 'undefined') return [];
@@ -104,22 +81,19 @@ function removeFromWishlist(id: number): void {
   saveWishlist(newItems);
 }
 
-function isInWishlist(id: number): boolean {
-  const currentItems = getWishlist();
-  return currentItems.some(item => item.id === id);
-}
-
-function toggleWishlistItem(item: WishlistItem): void {
-  if (isInWishlist(item.id)) {
-    removeFromWishlist(item.id);
-  } else {
-    addToWishlist(item);
-  }
-}
-
 export default function Home() {
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
+
+  // 관리자 권한 및 모달 상태
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [newProduct, setNewProduct] = useState({
+    image: '',
+    name: '',
+    price: '',
+    stock: ''
+  });
 
   // 카테고리 데이터
   const allCategories = [
@@ -137,7 +111,7 @@ export default function Home() {
     },
     {
       id: 3,
-      title: '애기옷',
+      title: '아기옷',
       image: '/babysclothes.jpg',
       price: '₩25,000',
     },
@@ -145,7 +119,7 @@ export default function Home() {
       id: 4,
       title: '강아지',
       image: '/dog.jpg',
-      price: '₩45,000',
+      price: '₩35,000',
     },
   ];
 
@@ -156,10 +130,8 @@ export default function Home() {
       )
     : allCategories;
 
-  // 하트 상태 관리 (wishlist와 동기화)
+  // 위시리스트 및 장바구니 상태
   const [likedItems, setLikedItems] = useState<Set<number>>(new Set());
-
-  // 장바구니 상태 관리
   const [cartItems, setCartItems] = useState<Set<number>>(new Set());
 
   // 컴포넌트 마운트 시 wishlist와 cart 상태 불러오기
@@ -173,149 +145,301 @@ export default function Home() {
     setCartItems(cartIds);
   }, []);
 
+  // 관리자 권한 확인
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const email = localStorage.getItem('email');
+
+        if (token && email) {
+          const userData = await fetchUserProfile(email);
+          setIsAdmin(userData.isAdmin === 1);
+        }
+      } catch (error) {
+        console.error('관리자 권한 확인 실패:', error);
+        setIsAdmin(false);
+      }
+    };
+
+    checkAdminStatus();
+  }, []);
+
   const toggleLike = (categoryId: number) => {
     const category = categories.find(cat => cat.id === categoryId);
     if (!category) return;
 
-    // wishlist에 추가/제거
-    const wishlistItem: WishlistItem = {
-      id: category.id,
-      title: category.title,
-      image: category.image,
-      price: category.price,
-    };
-
-    toggleWishlistItem(wishlistItem);
-
-    // UI 상태 업데이트
-    setLikedItems(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(categoryId)) {
-        newSet.delete(categoryId);
-      } else {
-        newSet.add(categoryId);
-      }
-      return newSet;
-    });
+    const newLikedItems = new Set(likedItems);
+    if (newLikedItems.has(categoryId)) {
+      newLikedItems.delete(categoryId);
+      removeFromWishlist(categoryId);
+    } else {
+      newLikedItems.add(categoryId);
+      addToWishlist({
+        id: category.id,
+        title: category.title,
+        image: category.image,
+        price: category.price,
+      });
+    }
+    setLikedItems(newLikedItems);
   };
 
   const handleAddToCart = (categoryId: number) => {
     const category = categories.find(cat => cat.id === categoryId);
     if (!category) return;
 
-    const isInCart = cartItems.has(categoryId);
-
-    if (isInCart) {
-      // 장바구니에서 제거
+    const newCartItems = new Set(cartItems);
+    if (newCartItems.has(categoryId)) {
+      newCartItems.delete(categoryId);
       removeFromCart(categoryId);
-      setCartItems(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(categoryId);
-        return newSet;
-      });
-      alert(`${category.title}이(가) 장바구니에서 제거되었습니다.`);
     } else {
-      // 장바구니에 추가
-      const cartItem: Omit<CartItem, 'quantity' | 'addedAt'> = {
+      newCartItems.add(categoryId);
+      const cartItem: CartItem = {
         id: category.id,
         title: category.title,
         image: category.image,
         price: category.price,
+        quantity: 1,
+        addedAt: new Date().toISOString(),
       };
+      const currentCart = getCart();
+      saveCart([...currentCart, cartItem]);
+    }
+    setCartItems(newCartItems);
+  };
 
-      addToCart(cartItem);
-      setCartItems(prev => new Set(prev).add(categoryId));
-      alert(`${category.title}이(가) 장바구니에 추가되었습니다.`);
+  // 상품 추가 모달 열기
+  const openAddProductModal = () => {
+    setShowAddProductModal(true);
+  };
+
+  // 상품 추가 모달 닫기
+  const closeAddProductModal = () => {
+    setShowAddProductModal(false);
+    setNewProduct({ image: '', name: '', price: '', stock: '' });
+  };
+
+  // 상품 추가 폼 제출
+  const handleAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!newProduct.name || !newProduct.price || !newProduct.stock) {
+      alert('모든 필드를 입력해주세요.');
+      return;
+    }
+
+    try {
+      // TODO: 백엔드 API로 상품 추가 요청
+      console.log('새 상품 추가:', newProduct);
+      alert('상품이 성공적으로 추가되었습니다!');
+      closeAddProductModal();
+    } catch (error) {
+      console.error('상품 추가 실패:', error);
+      alert('상품 추가에 실패했습니다.');
     }
   };
 
   return (
-    <div className="max-w-[1200px] mx-auto px-4 py-8">
-      {/* 검색 결과 표시 */}
-      {searchQuery && (
-        <div className="mb-6">
-          <h2 className="text-lg font-medium text-gray-900">
-            "{searchQuery}" 검색 결과 ({categories.length}개)
-          </h2>
-          {categories.length === 0 && (
-            <p className="text-gray-600 mt-2">검색 결과가 없습니다.</p>
+    <>
+      {/* 기존 메인페이지 내용 */}
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">JikguMate 상품</h1>
+
+          {/* 검색어 표시 */}
+          {searchQuery && (
+            <div className="mb-6 text-center">
+              <p className="text-lg text-gray-600">
+                "<span className="font-medium text-gray-900">{searchQuery}</span>" 검색 결과
+              </p>
+            </div>
           )}
+
+          {/* 카테고리 그리드 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {categories.map((category) => (
+              <div
+                key={category.id}
+                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+              >
+                {/* 상품 이미지 */}
+                <div className="relative">
+                  <img
+                    src={category.image}
+                    alt={category.title}
+                    className="w-full h-64 object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/placeholder-image.png';
+                    }}
+                  />
+
+                  {/* 찜하기 버튼 */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleLike(category.id);
+                    }}
+                    className="absolute top-4 right-4 p-2 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 transition-all"
+                  >
+                    <div className="flex items-center gap-1">
+                      <svg
+                        className={`w-5 h-5 ${likedItems.has(category.id) ? 'text-red-500 fill-current' : 'text-gray-600'}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                        />
+                      </svg>
+                      <span className={likedItems.has(category.id) ? 'text-red-500' : 'text-gray-600'}>
+                        {likedItems.has(category.id) ? '찜 해제' : '찜하기'}
+                      </span>
+                    </div>
+                  </button>
+                </div>
+
+                {/* 카테고리 제목과 가격 */}
+                <div className="p-4">
+                  <h3 className="text-lg font-medium text-gray-900 text-center mb-2">{category.title}</h3>
+                  <p className="text-xl font-bold text-gray-900 text-center mb-4">{category.price}</p>
+
+                  {/* 장바구니 추가 버튼 */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddToCart(category.id);
+                    }}
+                    className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${
+                      cartItems.has(category.id)
+                        ? 'bg-red-600 text-white hover:bg-red-700'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                  >
+                    {cartItems.has(category.id) ? '삭제' : '장바구니 담기'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+
+        {/* 관리자용 상품 추가 버튼 */}
+        {isAdmin && (
+          <button
+            onClick={openAddProductModal}
+            className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-40"
+            title="상품 추가"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+              />
+            </svg>
+          </button>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {categories.map((category) => (
-          <div
-            key={category.id}
-            className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer bg-white"
-          >
-            <div className="relative">
-              {/* 상품 이미지 */}
-              <div className="aspect-square bg-gray-100">
-                <img
-                  src={category.image}
-                  alt={category.title}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.src = '/placeholder-image.png';
-                  }}
-                />
-              </div>
+        {/* 상품 추가 모달 */}
+        {showAddProductModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">상품 추가</h2>
 
-              {/* 하트 버튼 */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleLike(category.id);
-                }}
-                className="absolute top-3 right-3 px-3 py-1 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 transition-all text-xs font-medium"
-              >
-                <div className="flex items-center gap-1">
-                  <svg
-                    className={`w-4 h-4 transition-colors ${
-                      likedItems.has(category.id) ? 'text-red-500 fill-current' : 'text-gray-400'
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                    />
-                  </svg>
-                  <span className={likedItems.has(category.id) ? 'text-red-500' : 'text-gray-600'}>
-                    {likedItems.has(category.id) ? '찜 해제' : '찜하기'}
-                  </span>
+              <form onSubmit={handleAddProduct} className="space-y-4">
+                {/* 상품 이미지 URL */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    상품 이미지 URL
+                  </label>
+                  <input
+                    type="url"
+                    value={newProduct.image}
+                    onChange={(e) => setNewProduct({...newProduct, image: e.target.value})}
+                    placeholder="https://example.com/image.jpg"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
-              </button>
-            </div>
 
-            {/* 카테고리 제목과 가격 */}
-            <div className="p-4">
-              <h3 className="text-lg font-medium text-gray-900 text-center mb-2">{category.title}</h3>
-              <p className="text-xl font-bold text-gray-900 text-center mb-4">{category.price}</p>
+                {/* 상품 이름 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    상품 이름 *
+                  </label>
+                  <input
+                    type="text"
+                    value={newProduct.name}
+                    onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
+                    placeholder="상품 이름을 입력하세요"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
 
-              {/* 장바구니 추가 버튼 */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAddToCart(category.id);
-                }}
-                className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${
-                  cartItems.has(category.id)
-                    ? 'bg-red-600 text-white hover:bg-red-700'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-              >
-                {cartItems.has(category.id) ? '삭제' : '장바구니 담기'}
-              </button>
+                {/* 상품 가격 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    상품 가격 *
+                  </label>
+                  <input
+                    type="text"
+                    value={newProduct.price}
+                    onChange={(e) => setNewProduct({...newProduct, price: e.target.value})}
+                    placeholder="₩50,000"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+
+                {/* 상품 재고 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    상품 재고 *
+                  </label>
+                  <input
+                    type="number"
+                    value={newProduct.stock}
+                    onChange={(e) => setNewProduct({...newProduct, stock: e.target.value})}
+                    placeholder="100"
+                    min="0"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+
+                {/* 버튼들 */}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={closeAddProductModal}
+                    className="flex-1 px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    추가
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
-        ))}
+        )}
       </div>
-    </div>
+    </>
   );
 }
