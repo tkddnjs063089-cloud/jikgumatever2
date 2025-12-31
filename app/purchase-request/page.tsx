@@ -9,8 +9,8 @@ import { analyzeProduct } from '../utils/api';
   title: string;
   image: string;
   price: number;
-  desc: string;
   url: string;
+  productId: number;
 }
 
 export default function PurchaseRequestPage() {
@@ -192,8 +192,8 @@ export default function PurchaseRequestPage() {
               </div>
 
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">상품 설명</h3>
-                <p className="text-base text-gray-700 whitespace-pre-line">{productInfo.desc}</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">상품 ID</h3>
+                <p className="text-base text-gray-700">{productInfo.productId}</p>
               </div>
             </div>
           </div>

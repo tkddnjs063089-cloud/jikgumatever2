@@ -143,10 +143,13 @@ export async function fetchUsers() {
   }
 }
 
-// 상품 분석
+// 상품 분석 (POST 요청으로 변경)
 export async function analyzeProduct(url: string) {
   try {
-    const response = await apiCall(`/products/analyze?url=${encodeURIComponent(url)}`);
+    const response = await apiCall('/products/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ url })
+    });
 
     if (!response.ok) {
       if (response.status === 401) {
