@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 
 // 임시: cart 함수들 직접 정의
 interface CartItem {
@@ -68,30 +67,13 @@ function getCartTotal(): number {
 }
 
 export default function CartPage() {
-  const searchParams = useSearchParams();
-  const searchQuery = searchParams.get('search') || '';
-
-  const [allCartItems, setAllCartItems] = useState<CartItem[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
   // 컴포넌트 마운트 시 장바구니 데이터 불러오기
   useEffect(() => {
     const items = getCart();
-    setAllCartItems(items);
     setCartItems(items);
   }, []);
-
-  // 검색어에 따라 장바구니 아이템 필터링
-  useEffect(() => {
-    if (searchQuery) {
-      const filtered = allCartItems.filter(item =>
-        item.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setCartItems(filtered);
-    } else {
-      setCartItems(allCartItems);
-    }
-  }, [searchQuery, allCartItems]);
 
   const handleRemoveFromCart = (id: number) => {
     removeFromCart(id);
@@ -145,11 +127,6 @@ export default function CartPage() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">장바구니</h1>
-          {searchQuery && (
-            <div className="text-sm text-gray-600 mt-1">
-              "{searchQuery}" 검색 결과 ({cartItems.length}개)
-            </div>
-          )}
         </div>
         <button
           onClick={handleClearCart}

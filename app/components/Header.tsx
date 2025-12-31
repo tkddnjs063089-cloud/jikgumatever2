@@ -91,7 +91,7 @@ export default function Header() {
     const query = searchQuery.trim();
 
     if (!query) {
-      if (pathname === '/wishlist' || pathname === '/cart') {
+      if (pathname === '/wishlist') {
         router.push(pathname);
       } else {
         router.push('/');
@@ -101,8 +101,6 @@ export default function Header() {
 
     if (pathname === '/wishlist') {
       router.push(`/wishlist?search=${encodeURIComponent(query)}`);
-    } else if (pathname === '/cart') {
-      router.push(`/cart?search=${encodeURIComponent(query)}`);
     } else {
       router.push(`/?search=${encodeURIComponent(query)}`);
     }
