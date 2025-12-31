@@ -1,26 +1,62 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+// 임시: wishlist 함수들 직접 정의
+interface WishlistItem {
+  id: number;
+  title: string;
+  image: string;
+  price: string;
+}
+
+const WISHLIST_KEY = 'jikgumate_wishlist';
+
+function getWishlist(): WishlistItem[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const stored = localStorage.getItem(WISHLIST_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('찜 목록 불러오기 실패:', error);
+    return [];
+  }
+}
+
+function saveWishlist(items: WishlistItem[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(WISHLIST_KEY, JSON.stringify(items));
+  } catch (error) {
+    console.error('찜 목록 저장 실패:', error);
+  }
+}
+
+function removeFromWishlist(id: number): void {
+  const currentItems = getWishlist();
+  const newItems = currentItems.filter(item => item.id !== id);
+  saveWishlist(newItems);
+}
 
 export default function WishlistPage() {
-  // 임시 찜 목록 데이터
-  const [wishlistItems, setWishlistItems] = useState([
-    { id: 1, name: '상품 1', price: 15000, image: '이미지' },
-    { id: 2, name: '상품 2', price: 25000, image: '이미지' },
-    { id: 3, name: '상품 3', price: 30000, image: '이미지' },
-    { id: 4, name: '상품 4', price: 45000, image: '이미지' },
-    { id: 5, name: '상품 5', price: 20000, image: '이미지' },
-    { id: 6, name: '상품 6', price: 35000, image: '이미지' },
-  ]);
+  // 찜 목록 데이터
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
+
+  // 컴포넌트 마운트 시 찜 목록 불러오기
+  useEffect(() => {
+    const items = getWishlist();
+    setWishlistItems(items);
+  }, []);
 
   const handleRemoveFromWishlist = (id: number) => {
+    removeFromWishlist(id);
     setWishlistItems(prev => prev.filter(item => item.id !== id));
   };
 
-  const handleAddToCart = (item: typeof wishlistItems[0]) => {
+  const handleAddToCart = (item: WishlistItem) => {
     // 장바구니 추가 로직 구현 예정
     console.log('장바구니 추가:', item);
-    alert(`${item.name}이(가) 장바구니에 추가되었습니다.`);
+    alert(`${item.title}이(가) 장바구니에 추가되었습니다.`);
   };
 
   if (wishlistItems.length === 0) {
@@ -80,14 +116,21 @@ export default function WishlistPage() {
             </button>
 
             {/* 상품 이미지 */}
-            <div className="aspect-square bg-gray-100 rounded mb-4 flex items-center justify-center cursor-pointer">
-              <span className="text-gray-400">{item.image}</span>
+            <div className="aspect-square bg-gray-100 rounded mb-4 flex items-center justify-center cursor-pointer overflow-hidden">
+              <img
+                src={item.image}
+                alt={item.title}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = '/placeholder-image.png';
+                }}
+              />
             </div>
 
             {/* 상품 정보 */}
-            <h3 className="text-lg font-medium text-gray-900 mb-2">{item.name}</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">{item.title}</h3>
             <p className="text-xl font-bold text-gray-900 mb-4">
-              {item.price.toLocaleString()}원
+              {item.price}
             </p>
 
             {/* 장바구니 추가 버튼 */}
