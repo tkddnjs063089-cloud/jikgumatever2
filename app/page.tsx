@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { removeFromCart } from './utils/cart';
 import { fetchUserProfile } from './utils/api';
@@ -81,7 +81,8 @@ function removeFromWishlist(id: number): void {
   saveWishlist(newItems);
 }
 
-export default function Home() {
+// 실제 홈 콘텐츠 컴포넌트 (useSearchParams 사용)
+function HomeContent() {
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
 
@@ -441,5 +442,18 @@ export default function Home() {
         )}
       </div>
     </>
+  );
+}
+
+// 메인 Home 컴포넌트 - Suspense로 감싸서 prerendering 방지
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }
