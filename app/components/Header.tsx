@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 
 type Language = 'ko' | 'en' | 'ja' | 'zh' | 'es';
@@ -16,6 +16,7 @@ const languages: { code: Language; name: string; nativeName: string }[] = [
 
 export default function Header() {
   const pathname = usePathname();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [currentLanguage, setCurrentLanguage] = useState<Language>('ko');
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
@@ -36,9 +37,33 @@ export default function Header() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // 검색 로직 구현 예정
-    console.log('검색:', searchQuery);
+    const query = searchQuery.trim();
+
+    if (!query) {
+      // 검색어가 없으면 현재 페이지의 초기 상태로 이동
+      if (pathname === '/wishlist' || pathname === '/cart') {
+        router.push(pathname);
+      } else {
+        router.push('/');
+      }
+      return;
+    }
+
+    // 페이지별 검색 로직
+    if (pathname === '/wishlist') {
+      // 찜 페이지에서는 찜 목록 내 검색
+      router.push(`/wishlist?search=${encodeURIComponent(query)}`);
+    } else if (pathname === '/cart') {
+      // 장바구니 페이지에서는 장바구니 내 검색
+      router.push(`/cart?search=${encodeURIComponent(query)}`);
+    } else {
+      // 다른 페이지에서는 메인페이지로 이동해서 전체 상품 검색
+      router.push(`/?search=${encodeURIComponent(query)}`);
+    }
   };
+
+  // 구매요청 페이지와 장바구니 페이지에서는 검색창 숨기기
+  const shouldShowSearch = pathname !== '/purchase-request' && pathname !== '/cart';
 
   const handleLanguageChange = (lang: Language) => {
     setCurrentLanguage(lang);
@@ -64,33 +89,35 @@ export default function Header() {
             </Link>
           </div>
           
-          {/* 검색창 */}
-          <div className="flex-1 max-w-md mx-4">
-            <form onSubmit={handleSearch}>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="상품 검색..."
-                  className="w-full px-4 py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <svg
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          {/* 검색창 (구매요청 페이지에서는 숨김) */}
+          {shouldShowSearch && (
+            <div className="flex-1 max-w-md mx-4">
+              <form onSubmit={handleSearch}>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="상품 검색..."
+                    className="w-full px-4 py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                </svg>
-              </div>
-            </form>
-          </div>
+                  <svg
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
+              </form>
+            </div>
+          )}
 
           {/* 언어 설정, 마이페이지, 장바구니 */}
           <div className="flex items-center gap-6">

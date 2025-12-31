@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 // 임시: wishlist 함수들 직접 정의
 interface WishlistItem {
@@ -39,14 +40,31 @@ function removeFromWishlist(id: number): void {
 }
 
 export default function WishlistPage() {
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get('search') || '';
+
   // 찜 목록 데이터
+  const [allWishlistItems, setAllWishlistItems] = useState<WishlistItem[]>([]);
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
 
-  // 컴포넌트 마운트 시 찜 목록 불러오기
+  // 컴포넌트 마운트 시 찜 목록 데이터 불러오기
   useEffect(() => {
     const items = getWishlist();
+    setAllWishlistItems(items);
     setWishlistItems(items);
   }, []);
+
+  // 검색어에 따라 찜 목록 필터링
+  useEffect(() => {
+    if (searchQuery) {
+      const filtered = allWishlistItems.filter(item =>
+        item.title.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setWishlistItems(filtered);
+    } else {
+      setWishlistItems(allWishlistItems);
+    }
+  }, [searchQuery, allWishlistItems]);
 
   const handleRemoveFromWishlist = (id: number) => {
     removeFromWishlist(id);
@@ -86,7 +104,14 @@ export default function WishlistPage() {
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">찜 목록</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">찜 목록</h1>
+        {searchQuery && (
+          <div className="text-sm text-gray-600">
+            "{searchQuery}" 검색 결과 ({wishlistItems.length}개)
+          </div>
+        )}
+      </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {wishlistItems.map((item) => (

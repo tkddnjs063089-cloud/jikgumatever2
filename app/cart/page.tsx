@@ -1,19 +1,163 @@
-export default function CartPage() {
-  // 임시 장바구니 데이터
-  const cartItems = [
-    { id: 1, name: '상품 1', price: 15000, quantity: 2, image: '이미지' },
-    { id: 2, name: '상품 2', price: 25000, quantity: 1, image: '이미지' },
-    { id: 3, name: '상품 3', price: 30000, quantity: 3, image: '이미지' },
-  ];
+'use client';
 
-  const totalPrice = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+
+// 임시: cart 함수들 직접 정의
+interface CartItem {
+  id: number;
+  title: string;
+  image: string;
+  price: string;
+  quantity: number;
+  addedAt: string;
+}
+
+const CART_KEY = 'jikgumate_cart';
+
+function getCart(): CartItem[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const stored = localStorage.getItem(CART_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('장바구니 불러오기 실패:', error);
+    return [];
+  }
+}
+
+function saveCart(items: CartItem[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(CART_KEY, JSON.stringify(items));
+  } catch (error) {
+    console.error('장바구니 저장 실패:', error);
+  }
+}
+
+function removeFromCart(id: number): void {
+  const currentItems = getCart();
+  const newItems = currentItems.filter(item => item.id !== id);
+  saveCart(newItems);
+}
+
+function updateCartItemQuantity(id: number, quantity: number): void {
+  const currentItems = getCart();
+  const item = currentItems.find(item => item.id === id);
+
+  if (item) {
+    if (quantity <= 0) {
+      removeFromCart(id);
+    } else {
+      item.quantity = quantity;
+      saveCart(currentItems);
+    }
+  }
+}
+
+function clearCart(): void {
+  saveCart([]);
+}
+
+function getCartTotal(): number {
+  const items = getCart();
+  return items.reduce((total, item) => {
+    const price = parseInt(item.price.replace(/[^\d]/g, '')) || 0;
+    return total + (price * item.quantity);
+  }, 0);
+}
+
+export default function CartPage() {
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get('search') || '';
+
+  const [allCartItems, setAllCartItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+
+  // 컴포넌트 마운트 시 장바구니 데이터 불러오기
+  useEffect(() => {
+    const items = getCart();
+    setAllCartItems(items);
+    setCartItems(items);
+  }, []);
+
+  // 검색어에 따라 장바구니 아이템 필터링
+  useEffect(() => {
+    if (searchQuery) {
+      const filtered = allCartItems.filter(item =>
+        item.title.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setCartItems(filtered);
+    } else {
+      setCartItems(allCartItems);
+    }
+  }, [searchQuery, allCartItems]);
+
+  const handleRemoveFromCart = (id: number) => {
+    removeFromCart(id);
+    setCartItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  const handleUpdateQuantity = (id: number, newQuantity: number) => {
+    updateCartItemQuantity(id, newQuantity);
+    setCartItems(prev => prev.map(item =>
+      item.id === id ? { ...item, quantity: Math.max(1, newQuantity) } : item
+    ));
+  };
+
+  const handleClearCart = () => {
+    if (confirm('장바구니를 비우시겠습니까?')) {
+      clearCart();
+      setCartItems([]);
+    }
+  };
+
+  const totalPrice = getCartTotal();
+
+  // 빈 장바구니 상태
+  if (cartItems.length === 0) {
+    return (
+      <div className="max-w-[1200px] mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">장바구니</h1>
+        <div className="flex flex-col items-center justify-center py-20">
+          <svg
+            className="w-24 h-24 text-gray-400 mb-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.1 5H19M7 13l-1.1 5M7 13l2.5-2.5M17.5 10.5L19 12m-4.5-1.5l2.5 2.5M9 5h.01M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"
+            />
+          </svg>
+          <p className="text-xl text-gray-600 mb-2">장바구니가 비어있습니다</p>
+          <p className="text-gray-400">상품을 추가해보세요!</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">장바구니</h1>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">장바구니</h1>
+          {searchQuery && (
+            <div className="text-sm text-gray-600 mt-1">
+              "{searchQuery}" 검색 결과 ({cartItems.length}개)
+            </div>
+          )}
+        </div>
+        <button
+          onClick={handleClearCart}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          장바구니 비우기
+        </button>
+      </div>
       
       <div className="space-y-4">
         {cartItems.map((item) => (
@@ -21,40 +165,60 @@ export default function CartPage() {
             key={item.id}
             className="border border-gray-200 rounded-lg p-6 bg-white flex items-center gap-6 hover:shadow-md transition-shadow"
           >
-            <div className="w-24 h-24 bg-gray-100 rounded flex items-center justify-center flex-shrink-0">
-              <span className="text-gray-400 text-sm">{item.image}</span>
+            {/* 상품 이미지 */}
+            <div className="w-24 h-24 bg-gray-100 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <img
+                src={item.image}
+                alt={item.title}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = '/placeholder-image.png';
+                }}
+              />
             </div>
+
+            {/* 상품 정보 */}
             <div className="flex-1">
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {item.name}
+                {item.title}
               </h3>
-              <div className="flex items-center gap-4 text-gray-600">
-                <span>수량: {item.quantity}</span>
-                <span>단가: {item.price.toLocaleString()}원</span>
+              <div className="flex items-center gap-4 text-gray-600 mb-2">
+                <span>단가: {item.price}</span>
+              </div>
+
+              {/* 수량 조절 */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600">수량:</label>
+                <button
+                  onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
+                  disabled={item.quantity <= 1}
+                  className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  -
+                </button>
+                <span className="w-12 text-center">{item.quantity}</span>
+                <button
+                  onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                  className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50"
+                >
+                  +
+                </button>
               </div>
             </div>
-            <div className="text-xl font-bold text-gray-900">
-              {(item.price * item.quantity).toLocaleString()}원
-            </div>
-            <button
-              className="text-red-500 hover:text-red-700 transition-colors px-4"
-              aria-label="삭제"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-                className="w-6 h-6"
+
+            {/* 가격 및 삭제 */}
+            <div className="text-right">
+              <div className="text-xl font-bold text-gray-900 mb-4">
+                {(parseInt(item.price.replace(/[^\d]/g, '')) * item.quantity).toLocaleString()}원
+              </div>
+              <button
+                onClick={() => handleRemoveFromCart(item.id)}
+                className="text-red-500 hover:text-red-700 transition-colors px-3 py-1 rounded border border-red-200 hover:bg-red-50"
+                aria-label="삭제"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                />
-              </svg>
-            </button>
+                삭제
+              </button>
+            </div>
           </div>
         ))}
       </div>

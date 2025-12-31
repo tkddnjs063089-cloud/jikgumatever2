@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { analyzeProduct } from '../utils/api';
 
@@ -13,10 +14,48 @@ import { analyzeProduct } from '../utils/api';
 }
 
 export default function PurchaseRequestPage() {
+  const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [productLink, setProductLink] = useState('');
   const [productInfo, setProductInfo] = useState<ProductInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const hasCheckedAuthRef = useRef(false);
+
+  // 로그인 체크
+  useEffect(() => {
+    // 이미 체크한 경우 중복 실행 방지
+    if (hasCheckedAuthRef.current) {
+      return;
+    }
+    hasCheckedAuthRef.current = true;
+
+    const checkAuth = () => {
+      try {
+        const token = localStorage.getItem('token');
+        const email = localStorage.getItem('email');
+
+        if (!token || !email) {
+          console.log('구매요청 페이지: 로그인이 필요합니다.');
+          alert('로그인이 필요합니다.');
+          router.push('/login');
+          return;
+        }
+
+        console.log('구매요청 페이지: 로그인 확인됨');
+        setIsLoggedIn(true);
+      } catch (error) {
+        console.error('로그인 체크 오류:', error);
+        alert('로그인 상태 확인 중 오류가 발생했습니다.');
+        router.push('/login');
+      } finally {
+        setIsAuthLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [router]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setProductLink(e.target.value);
@@ -60,6 +99,22 @@ export default function PurchaseRequestPage() {
       setIsLoading(false);
     }
   };
+
+  // 인증 로딩 중
+  if (isAuthLoading) {
+    return (
+      <div className="max-w-[1200px] mx-auto px-4 py-8">
+        <div className="flex items-center justify-center py-20">
+          <div className="text-gray-600">로딩 중...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // 로그인되지 않은 경우는 이미 리다이렉트됨
+  if (!isLoggedIn) {
+    return null;
+  }
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 py-8">
