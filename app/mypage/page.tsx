@@ -124,6 +124,9 @@ export default function MyPage() {
       localStorage.removeItem('user');
       localStorage.removeItem('email');
 
+      // 로그인 상태 변경 이벤트 발생
+      window.dispatchEvent(new Event('authChange'));
+
       // 로그인 페이지로 리다이렉트
       router.push('/login');
     }

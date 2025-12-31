@@ -49,7 +49,18 @@ export default function LoginPage() {
         }),
       });
 
-      const data = await response.json();
+      // 응답이 JSON인지 확인
+      const contentType = response.headers.get('content-type');
+      let data;
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        // HTML 응답인 경우 텍스트로 처리
+        const text = await response.text();
+        console.error('HTML 응답 수신:', text.substring(0, 200));
+        throw new Error(`서버 에러 (${response.status}): API 엔드포인트를 찾을 수 없습니다.`);
+      }
+
       console.log('로그인 응답 데이터:', data); // 디버깅용
 
       if (response.ok) {
@@ -85,6 +96,9 @@ export default function LoginPage() {
 
         // 토큰 모니터링 시작
         onLoginSuccess();
+
+        // 로그인 상태 변경 이벤트 발생 (Header 실시간 업데이트용)
+        window.dispatchEvent(new Event('authChange'));
 
         router.push('/mypage');
       } else {
