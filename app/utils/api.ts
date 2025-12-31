@@ -111,6 +111,38 @@ export async function fetchUserProfile(email: string) {
   }
 }
 
+// 사용자 목록 조회 (관리자용)
+export async function fetchUsers() {
+  try {
+    const response = await apiCall('/users');
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('인증이 필요합니다.');
+      }
+      if (response.status === 403) {
+        throw new Error('관리자 권한이 필요합니다.');
+      }
+      throw new Error('사용자 목록을 가져오는데 실패했습니다.');
+    }
+
+    // 응답이 JSON인지 확인
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('서버에서 잘못된 응답을 받았습니다.');
+    }
+
+    return await response.json();
+  } catch (error) {
+    // JSON 파싱 에러 처리 (HTML 응답 등)
+    if (error instanceof SyntaxError) {
+      console.error('JSON 파싱 에러 (HTML 응답 수신):', error);
+      throw new Error('서버 연결에 문제가 있습니다. 잠시 후 다시 시도해주세요.');
+    }
+    throw error;
+  }
+}
+
 // 상품 분석
 export async function analyzeProduct(url: string) {
   try {
