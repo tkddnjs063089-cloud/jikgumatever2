@@ -304,7 +304,7 @@ export default function Header() {
         {/* 하단: 네비게이션 메뉴 */}
         <div className="flex gap-8 pb-4 justify-end">
           {/* 관리자 버튼 (관리자인 경우에만 표시) */}
-          {isLoggedIn && userInfo?.isAdmin === 1 && (
+          {isLoggedIn && (userInfo?.isAdmin === true || userInfo?.isAdmin === 1) && (
             <Link
               href="/admin"
               className={`transition-colors ${

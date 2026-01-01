@@ -33,7 +33,7 @@ export default function AdminLayout({
         // 사용자 정보 가져오기
         const userData = await fetchUserProfile(email);
 
-        if (userData.isAdmin === 1) {
+        if (userData.isAdmin === true || userData.isAdmin === 1) {
           setIsAuthorized(true);
         } else {
           if (!alertShownRef.current) {

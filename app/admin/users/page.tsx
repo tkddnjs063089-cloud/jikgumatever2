@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { fetchUsers } from '../../utils/api';
+import { fetchAllUsers } from '../../utils/api';
 
 interface User {
   email: string;
@@ -20,9 +20,7 @@ export default function AdminUsersPage() {
   useEffect(() => {
     const loadUsers = async () => {
       try {
-        console.log('사용자 목록 로딩 시작...');
-        const userData = await fetchUsers();
-        console.log('사용자 목록 로딩 성공:', userData);
+        const userData = await fetchAllUsers();
         setUsers(userData);
       } catch (error) {
         console.error('사용자 목록 로딩 실패:', error);

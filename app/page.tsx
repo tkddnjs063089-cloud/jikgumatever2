@@ -155,7 +155,7 @@ function HomeContent() {
 
         if (token && email) {
           const userData = await fetchUserProfile(email);
-          setIsAdmin(userData.isAdmin === 1);
+          setIsAdmin(userData.isAdmin === true || userData.isAdmin === 1);
         }
       } catch (error) {
         console.error('관리자 권한 확인 실패:', error);
