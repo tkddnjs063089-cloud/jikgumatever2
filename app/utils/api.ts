@@ -114,32 +114,62 @@ export async function fetchUserProfile(email: string) {
 // 사용자 목록 조회 (관리자용)
 export async function fetchUsers() {
   try {
-    const response = await apiCall('/users');
+    const response = await apiCall('/users/all');
 
     if (!response.ok) {
+      // 에러 응답 본문 확인
+      let errorMessage = `사용자 목록을 가져오는데 실패했습니다. (${response.status})`;
+      try {
+        const errorText = await response.text();
+        if (errorText) {
+          console.error('서버 에러 응답:', response.status, errorText);
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.message || errorMessage;
+          } catch {
+            // JSON이 아니면 텍스트 그대로 사용
+          }
+        }
+      } catch {
+        // 에러 응답 읽기 실패
+      }
+      
       if (response.status === 401) {
         throw new Error('인증이 필요합니다.');
       }
       if (response.status === 403) {
         throw new Error('관리자 권한이 필요합니다.');
       }
-      throw new Error('사용자 목록을 가져오는데 실패했습니다.');
+      throw new Error(errorMessage);
     }
 
-    // 응답이 JSON인지 확인
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      throw new Error('서버에서 잘못된 응답을 받았습니다.');
+    // 응답 본문을 텍스트로 먼저 가져와서 확인
+    const text = await response.text();
+    
+    // 빈 응답 체크
+    if (!text || text.trim() === '') {
+      throw new Error('서버에서 빈 응답을 받았습니다.');
     }
 
-    return await response.json();
+    // JSON 파싱 시도
+    try {
+      const data = JSON.parse(text);
+      return data;
+    } catch (parseError) {
+      // JSON 파싱 실패 시 응답 내용 로그
+      console.error('JSON 파싱 실패. 응답 내용:', text.substring(0, 500));
+      console.error('Content-Type:', response.headers.get('content-type'));
+      console.error('Status:', response.status);
+      throw new Error('서버에서 잘못된 형식의 응답을 받았습니다.');
+    }
   } catch (error) {
-    // JSON 파싱 에러 처리 (HTML 응답 등)
-    if (error instanceof SyntaxError) {
-      console.error('JSON 파싱 에러 (HTML 응답 수신):', error);
-      throw new Error('서버 연결에 문제가 있습니다. 잠시 후 다시 시도해주세요.');
+    // 이미 처리된 에러는 그대로 전달
+    if (error instanceof Error) {
+      throw error;
     }
-    throw error;
+    // 기타 에러 처리
+    console.error('fetchUsers 에러:', error);
+    throw new Error('사용자 목록을 불러오는 중 오류가 발생했습니다.');
   }
 }
 
