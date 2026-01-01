@@ -1,15 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { fetchAllUsers } from '../../utils/api';
+import { fetchUsers } from '../../utils/api';
 
 interface User {
+  userId: number;
   email: string;
-  isAdmin: boolean;
-  pcccNumber: string | null;
-  defaultAddress: string | null;
+  name: string;
+  phone: string;
+  pcccNumber: string;
+  defaultAddress: string;
   createdAt: string;
-  profileImageUrl: string | null;
+  profileImageUrl: string;
+  isAdmin: number | boolean;
 }
 
 export default function AdminUsersPage() {
@@ -20,7 +23,7 @@ export default function AdminUsersPage() {
   useEffect(() => {
     const loadUsers = async () => {
       try {
-        const userData = await fetchAllUsers();
+        const userData = await fetchUsers();
         setUsers(userData);
       } catch (error) {
         console.error('사용자 목록 로딩 실패:', error);
@@ -59,7 +62,10 @@ export default function AdminUsersPage() {
             <table className="min-w-full bg-white border border-gray-300">
               <thead>
                 <tr className="bg-gray-50">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">회원번호</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">이메일</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">이름</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">핸드폰 번호</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">개인통관 고유번호</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">기본 배송지</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">가입일자</th>
@@ -69,18 +75,17 @@ export default function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {users.map((user, index) => (
-                  <tr key={user.email || index}>
+                {users.map((user) => (
+                  <tr key={user.userId}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.userId}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.email}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {user.pcccNumber || <span className="text-gray-400">없음</span>}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.phone}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.pcccNumber}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-xs truncate" title={user.defaultAddress}>
+                      {user.defaultAddress}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-xs truncate" title={user.defaultAddress || ''}>
-                      {user.defaultAddress || <span className="text-gray-400">없음</span>}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(user.createdAt).toLocaleString('ko-KR')}
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.createdAt}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {user.profileImageUrl ? (
                         <img
@@ -94,11 +99,11 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        user.isAdmin
+                        (user.isAdmin === true || user.isAdmin === 1)
                           ? 'bg-red-100 text-red-800'
                           : 'bg-green-100 text-green-800'
                       }`}>
-                        {user.isAdmin ? '관리자' : '일반'}
+                        {(user.isAdmin === true || user.isAdmin === 1) ? '관리자' : '일반'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
