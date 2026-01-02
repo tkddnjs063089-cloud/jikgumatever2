@@ -1,52 +1,53 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
-// 임시: cart 함수들 직접 정의
+// 장바구니 아이템 타입
 interface CartItem {
   id: number;
   title: string;
   image: string;
   price: string;
+  size: string;
   quantity: number;
   addedAt: string;
 }
 
-const CART_KEY = 'jikgumate_cart';
+const CART_KEY = "jikgumate_cart";
 
 function getCart(): CartItem[] {
-  if (typeof window === 'undefined') return [];
+  if (typeof window === "undefined") return [];
   try {
     const stored = localStorage.getItem(CART_KEY);
     return stored ? JSON.parse(stored) : [];
   } catch (error) {
-    console.error('장바구니 불러오기 실패:', error);
+    console.error("장바구니 불러오기 실패:", error);
     return [];
   }
 }
 
 function saveCart(items: CartItem[]): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   try {
     localStorage.setItem(CART_KEY, JSON.stringify(items));
   } catch (error) {
-    console.error('장바구니 저장 실패:', error);
+    console.error("장바구니 저장 실패:", error);
   }
 }
 
-function removeFromCart(id: number): void {
+function removeFromCart(id: number, size: string): void {
   const currentItems = getCart();
-  const newItems = currentItems.filter(item => item.id !== id);
+  const newItems = currentItems.filter((item) => !(item.id === id && item.size === size));
   saveCart(newItems);
 }
 
-function updateCartItemQuantity(id: number, quantity: number): void {
+function updateCartItemQuantity(id: number, size: string, quantity: number): void {
   const currentItems = getCart();
-  const item = currentItems.find(item => item.id === id);
+  const item = currentItems.find((item) => item.id === id && item.size === size);
 
   if (item) {
     if (quantity <= 0) {
-      removeFromCart(id);
+      removeFromCart(id, size);
     } else {
       item.quantity = quantity;
       saveCart(currentItems);
@@ -61,9 +62,14 @@ function clearCart(): void {
 function getCartTotal(): number {
   const items = getCart();
   return items.reduce((total, item) => {
-    const price = parseInt(item.price.replace(/[^\d]/g, '')) || 0;
-    return total + (price * item.quantity);
+    const price = parseInt(item.price.replace(/[^\d]/g, "")) || 0;
+    return total + price * item.quantity;
   }, 0);
+}
+
+// 고유 키 생성 (id + size 조합)
+function getCartItemKey(id: number, size: string): string {
+  return `${id}-${size}`;
 }
 
 export default function CartPage() {
@@ -75,20 +81,20 @@ export default function CartPage() {
     setCartItems(items);
   }, []);
 
-  const handleRemoveFromCart = (id: number) => {
-    removeFromCart(id);
-    setCartItems(prev => prev.filter(item => item.id !== id));
+  const handleRemoveFromCart = (id: number, size: string) => {
+    removeFromCart(id, size);
+    setCartItems((prev) => prev.filter((item) => !(item.id === id && item.size === size)));
   };
 
-  const handleUpdateQuantity = (id: number, newQuantity: number) => {
-    updateCartItemQuantity(id, newQuantity);
-    setCartItems(prev => prev.map(item =>
-      item.id === id ? { ...item, quantity: Math.max(1, newQuantity) } : item
-    ));
+  const handleUpdateQuantity = (id: number, size: string, newQuantity: number) => {
+    updateCartItemQuantity(id, size, newQuantity);
+    setCartItems((prev) =>
+      prev.map((item) => (item.id === id && item.size === size ? { ...item, quantity: Math.max(1, newQuantity) } : item))
+    );
   };
 
   const handleClearCart = () => {
-    if (confirm('장바구니를 비우시겠습니까?')) {
+    if (confirm("장바구니를 비우시겠습니까?")) {
       clearCart();
       setCartItems([]);
     }
@@ -102,12 +108,7 @@ export default function CartPage() {
       <div className="max-w-[1200px] mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">장바구니</h1>
         <div className="flex flex-col items-center justify-center py-20">
-          <svg
-            className="w-24 h-24 text-gray-400 mb-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-24 h-24 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -128,18 +129,15 @@ export default function CartPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">장바구니</h1>
         </div>
-        <button
-          onClick={handleClearCart}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-        >
+        <button onClick={handleClearCart} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
           장바구니 비우기
         </button>
       </div>
-      
+
       <div className="space-y-4">
         {cartItems.map((item) => (
           <div
-            key={item.id}
+            key={getCartItemKey(item.id, item.size)}
             className="border border-gray-200 rounded-lg p-6 bg-white flex items-center gap-6 hover:shadow-md transition-shadow"
           >
             {/* 상품 이미지 */}
@@ -149,17 +147,16 @@ export default function CartPage() {
                 alt={item.title}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  e.currentTarget.src = '/placeholder-image.png';
+                  e.currentTarget.src = "/placeholder-image.png";
                 }}
               />
             </div>
 
             {/* 상품 정보 */}
             <div className="flex-1">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {item.title}
-              </h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">{item.title}</h3>
               <div className="flex items-center gap-4 text-gray-600 mb-2">
+                <span className="bg-gray-100 px-2 py-1 rounded text-sm font-medium">사이즈: {item.size}</span>
                 <span>단가: {item.price}</span>
               </div>
 
@@ -167,7 +164,7 @@ export default function CartPage() {
               <div className="flex items-center gap-2">
                 <label className="text-sm text-gray-600">수량:</label>
                 <button
-                  onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
+                  onClick={() => handleUpdateQuantity(item.id, item.size, item.quantity - 1)}
                   disabled={item.quantity <= 1}
                   className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -175,7 +172,7 @@ export default function CartPage() {
                 </button>
                 <span className="w-12 text-center">{item.quantity}</span>
                 <button
-                  onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                  onClick={() => handleUpdateQuantity(item.id, item.size, item.quantity + 1)}
                   className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                 >
                   +
@@ -186,10 +183,10 @@ export default function CartPage() {
             {/* 가격 및 삭제 */}
             <div className="text-right">
               <div className="text-xl font-bold text-gray-900 mb-4">
-                {(parseInt(item.price.replace(/[^\d]/g, '')) * item.quantity).toLocaleString()}원
+                {(parseInt(item.price.replace(/[^\d]/g, "")) * item.quantity).toLocaleString()}원
               </div>
               <button
-                onClick={() => handleRemoveFromCart(item.id)}
+                onClick={() => handleRemoveFromCart(item.id, item.size)}
                 className="text-red-500 hover:text-red-700 transition-colors px-3 py-1 rounded border border-red-200 hover:bg-red-50"
                 aria-label="삭제"
               >
@@ -224,4 +221,3 @@ export default function CartPage() {
     </div>
   );
 }
-

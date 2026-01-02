@@ -82,33 +82,45 @@ export default function ProductDetailPage() {
     if (!product) return;
 
     if (!selectedSize) {
-      alert('사이즈를 선택해주세요.');
+      alert("사이즈를 선택해주세요.");
       return;
     }
 
     try {
       setIsLoading(true);
 
-      // 장바구니에 상품 추가 로직
-      const cartItem = {
-        id: product.id,
-        title: product.title,
-        image: product.image,
-        price: product.price,
-        size: selectedSize,
-        quantity: quantity,
-        addedAt: new Date().toISOString(),
-      };
+      // 로컬 스토리지에서 기존 장바구니 불러오기
+      const existingCart = JSON.parse(localStorage.getItem("jikgumate_cart") || "[]");
+
+      // 같은 상품 ID + 같은 사이즈가 있는지 확인
+      const existingItemIndex = existingCart.findIndex(
+        (item: { id: number; size: string }) => item.id === product.id && item.size === selectedSize
+      );
+
+      if (existingItemIndex !== -1) {
+        // 이미 있으면 수량만 증가
+        existingCart[existingItemIndex].quantity += quantity;
+      } else {
+        // 없으면 새로 추가
+        const cartItem = {
+          id: product.id,
+          title: product.title,
+          image: product.image,
+          price: product.price,
+          size: selectedSize,
+          quantity: quantity,
+          addedAt: new Date().toISOString(),
+        };
+        existingCart.push(cartItem);
+      }
 
       // 로컬 스토리지에 저장
-      const existingCart = JSON.parse(localStorage.getItem('jikgumate_cart') || '[]');
-      const updatedCart = [...existingCart, cartItem];
-      localStorage.setItem('jikgumate_cart', JSON.stringify(updatedCart));
+      localStorage.setItem("jikgumate_cart", JSON.stringify(existingCart));
 
-      alert(`${product.title} (${selectedSize})이(가) 장바구니에 추가되었습니다!`);
+      alert(`${product.title} (${selectedSize}) ${quantity}개가 장바구니에 추가되었습니다!`);
     } catch (error) {
-      console.error('장바구니 추가 실패:', error);
-      alert('장바구니 추가에 실패했습니다.');
+      console.error("장바구니 추가 실패:", error);
+      alert("장바구니 추가에 실패했습니다.");
     } finally {
       setIsLoading(false);
     }

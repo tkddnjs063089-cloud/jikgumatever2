@@ -167,6 +167,49 @@ export default function AdminOrderItemsPage() {
     }
   };
 
+  const handleCancelOrder = async (orderId: number) => {
+    if (!confirm("정말 이 주문을 취소하시겠습니까?")) return;
+
+    setSavingStatus((prev) => ({ ...prev, [orderId]: true }));
+
+    try {
+      const baseUrl = getApiBaseUrl();
+
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("로그인이 필요합니다.");
+      }
+
+      const response = await fetch(`${baseUrl}/orders/${orderId}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: "CANCELLED" }),
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "주문 취소에 실패했습니다.");
+        } else {
+          const errorText = await response.text();
+          console.error("API Error:", errorText);
+          throw new Error("주문 취소에 실패했습니다.");
+        }
+      }
+
+      await fetchOrders();
+      alert("주문이 취소되었습니다.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "주문 취소에 실패했습니다.");
+    } finally {
+      setSavingStatus((prev) => ({ ...prev, [orderId]: false }));
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status.toUpperCase()) {
       case "PENDING":
@@ -255,10 +298,8 @@ export default function AdminOrderItemsPage() {
                       className="px-3 py-1 border border-gray-300 rounded text-sm"
                     >
                       <option value="PENDING">대기중</option>
-                      <option value="PROCESSING">처리중</option>
                       <option value="SHIPPED">배송중</option>
                       <option value="DELIVERED">배송완료</option>
-                      <option value="CANCELLED">취소</option>
                     </select>
                     <button
                       onClick={() => handleSaveStatus(order.orderId)}
@@ -266,6 +307,13 @@ export default function AdminOrderItemsPage() {
                       className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
                     >
                       {savingStatus[order.orderId] ? "저장중..." : "저장"}
+                    </button>
+                    <button
+                      onClick={() => handleCancelOrder(order.orderId)}
+                      disabled={savingStatus[order.orderId] || order.status === "CANCELLED"}
+                      className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      취소
                     </button>
                   </div>
                 </div>
