@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { fetchUserProfile } from "./utils/api";
+import { fetchUserProfile, getApiBaseUrl } from "./utils/api";
 
 const WISHLIST_KEY = "jikgumate_wishlist";
 
@@ -11,6 +11,13 @@ interface WishlistItem {
   title: string;
   image: string;
   price: string;
+}
+
+interface Product {
+  productId: number;
+  imageUrl: string;
+  price: number;
+  ko_name: string;
 }
 
 function getWishlist(): WishlistItem[] {
@@ -65,36 +72,13 @@ function HomeContent() {
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  // 카테고리 데이터
-  const allCategories = [
-    {
-      id: 1,
-      title: "남성정장",
-      image: "/mansclothes.jpg",
-      price: "₩89,000",
-    },
-    {
-      id: 2,
-      title: "여성복장",
-      image: "/womansclothes.jpg",
-      price: "₩65,000",
-    },
-    {
-      id: 3,
-      title: "아기옷",
-      image: "/babysclothes.jpg",
-      price: "₩25,000",
-    },
-    {
-      id: 4,
-      title: "강아지",
-      image: "/dog.jpg",
-      price: "₩35,000",
-    },
-  ];
+  // 상품 데이터 상태
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-  // 검색어에 따라 카테고리 필터링
-  const categories = searchQuery ? allCategories.filter((category) => category.title.toLowerCase().includes(searchQuery.toLowerCase())) : allCategories;
+  // 검색어에 따라 상품 필터링
+  const filteredProducts = searchQuery ? products.filter((product) => product.ko_name.toLowerCase().includes(searchQuery.toLowerCase())) : products;
 
   // 위시리스트 상태
   const [likedItems, setLikedItems] = useState<Set<number>>(new Set());
@@ -104,6 +88,30 @@ function HomeContent() {
     const currentWishlist = getWishlist();
     const likedIds = new Set(currentWishlist.map((item) => item.id));
     setLikedItems(likedIds);
+  }, []);
+
+  // 상품 데이터 가져오기
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const baseUrl = getApiBaseUrl();
+        const response = await fetch(`${baseUrl}/products/all`);
+
+        if (!response.ok) {
+          throw new Error("상품 목록을 가져오는데 실패했습니다.");
+        }
+
+        const data = await response.json();
+        setProducts(data);
+      } catch (error) {
+        console.error("상품 로딩 실패:", error);
+        setLoadError(error instanceof Error ? error.message : "상품을 불러오는데 실패했습니다.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
   }, []);
 
   // 관리자 권한 확인
@@ -127,25 +135,31 @@ function HomeContent() {
   }, []);
 
   // 상품 상세 페이지로 이동
-  const goToProductDetail = (categoryId: number) => {
-    router.push(`/product/${categoryId}`);
+  const goToProductDetail = (productId: number) => {
+    router.push(`/product/${productId}`);
   };
 
-  const toggleLike = (categoryId: number) => {
-    const category = categories.find((cat) => cat.id === categoryId);
-    if (!category) return;
+  // 가격 포맷팅 함수
+  const formatPrice = (price: number) => {
+    if (price === 0) return "가격 문의";
+    return `₩${price.toLocaleString()}`;
+  };
+
+  const toggleLike = (productId: number) => {
+    const product = products.find((p) => p.productId === productId);
+    if (!product) return;
 
     const newLikedItems = new Set(likedItems);
-    if (newLikedItems.has(categoryId)) {
-      newLikedItems.delete(categoryId);
-      removeFromWishlist(categoryId);
+    if (newLikedItems.has(productId)) {
+      newLikedItems.delete(productId);
+      removeFromWishlist(productId);
     } else {
-      newLikedItems.add(categoryId);
+      newLikedItems.add(productId);
       addToWishlist({
-        id: category.id,
-        title: category.title,
-        image: category.image,
-        price: category.price,
+        id: product.productId,
+        title: product.ko_name,
+        image: product.imageUrl,
+        price: formatPrice(product.price),
       });
     }
     setLikedItems(newLikedItems);
@@ -218,52 +232,73 @@ function HomeContent() {
             </div>
           )}
 
-          {/* 카테고리 그리드 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {categories.map((category) => (
-              <div key={category.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => goToProductDetail(category.id)}>
-                {/* 상품 이미지 */}
-                <div className="relative">
-                  <img
-                    src={category.image}
-                    alt={category.title}
-                    className="w-full h-64 object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = "/placeholder-image.png";
-                    }}
-                  />
+          {/* 로딩 상태 */}
+          {isLoading && (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          )}
 
-                  {/* 찜하기 버튼 */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleLike(category.id);
-                    }}
-                    className="absolute top-4 right-4 p-2 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 transition-all"
-                  >
-                    <div className="flex items-center gap-1">
-                      <svg className={`w-5 h-5 ${likedItems.has(category.id) ? "text-red-500 fill-current" : "text-gray-600"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                        />
-                      </svg>
-                      <span className={likedItems.has(category.id) ? "text-red-500" : "text-gray-600"}>찜하기</span>
-                    </div>
-                  </button>
-                </div>
+          {/* 에러 상태 */}
+          {loadError && <div className="text-center py-12 text-red-600">{loadError}</div>}
 
-                {/* 카테고리 제목과 가격 */}
-                <div className="p-4">
-                  <h3 className="text-lg font-medium text-gray-900 text-center mb-2">{category.title}</h3>
-                  <p className="text-xl font-bold text-gray-900 text-center">{category.price}</p>
+          {/* 상품 그리드 */}
+          {!isLoading && !loadError && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredProducts.map((product) => (
+                <div
+                  key={product.productId}
+                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                  onClick={() => goToProductDetail(product.productId)}
+                >
+                  {/* 상품 이미지 */}
+                  <div className="relative">
+                    <img
+                      src={product.imageUrl || "/placeholder-image.png"}
+                      alt={product.ko_name}
+                      className="w-full h-64 object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = "/placeholder-image.png";
+                      }}
+                    />
+
+                    {/* 찜하기 버튼 */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleLike(product.productId);
+                      }}
+                      className="absolute top-4 right-4 p-2 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 transition-all"
+                    >
+                      <div className="flex items-center gap-1">
+                        <svg className={`w-5 h-5 ${likedItems.has(product.productId) ? "text-red-500 fill-current" : "text-gray-600"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                          />
+                        </svg>
+                        <span className={likedItems.has(product.productId) ? "text-red-500" : "text-gray-600"}>찜하기</span>
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* 상품 제목과 가격 */}
+                  <div className="p-4">
+                    <h3 className="text-sm font-medium text-gray-900 line-clamp-2 mb-2" title={product.ko_name}>
+                      {product.ko_name}
+                    </h3>
+                    <p className="text-lg font-bold text-blue-600">{formatPrice(product.price)}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+
+          {/* 검색 결과 없음 */}
+          {!isLoading && !loadError && filteredProducts.length === 0 && <div className="text-center py-12 text-gray-500">{searchQuery ? "검색 결과가 없습니다." : "등록된 상품이 없습니다."}</div>}
         </div>
 
         {/* 관리자용 상품 추가 버튼 */}

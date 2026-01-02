@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getApiBaseUrl } from "@/app/utils/api";
 
 declare global {
   interface Window {
@@ -116,19 +117,15 @@ export default function SignupPage() {
     setIsEmailAvailable(null);
 
     try {
-      // TODO: 실제 API 호출
-      // const response = await fetch(`/api/auth/check-email?email=${encodeURIComponent(formData.email)}`);
-      // const data = await response.json();
-      // setIsEmailAvailable(data.available);
+      const baseUrl = getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/users/check-email?email=${encodeURIComponent(formData.email)}`);
 
-      // 임시 처리 (실제로는 API 호출)
-      console.log("이메일 중복확인:", formData.email);
+      if (!response.ok) {
+        throw new Error("이메일 확인에 실패했습니다.");
+      }
 
-      // 임시로 성공 처리
-      setTimeout(() => {
-        setIsEmailAvailable(true);
-        setIsCheckingEmail(false);
-      }, 500);
+      const data = await response.json();
+      setIsEmailAvailable(data.available);
     } catch (error) {
       setIsEmailAvailable(false);
       setErrors({ email: "이메일 중복확인 중 오류가 발생했습니다." });

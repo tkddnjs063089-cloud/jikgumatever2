@@ -1,14 +1,15 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { getApiBaseUrl } from "@/app/utils/api";
 
 // 상품 데이터 타입
 interface Product {
-  id: number;
-  title: string;
-  image: string;
-  price: string;
+  productId: number;
+  imageUrl: string;
+  price: number;
+  ko_name: string;
 }
 
 export default function ProductDetailPage() {
@@ -16,58 +17,58 @@ export default function ProductDetailPage() {
   const router = useRouter();
 
   const [product, setProduct] = useState<Product | null>(null);
-  const [selectedSize, setSelectedSize] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [error, setError] = useState("");
 
-  // 상품 데이터
-  const allProducts: Product[] = [
-    {
-      id: 1,
-      title: '남성정장',
-      image: '/mansclothes.jpg',
-      price: '₩89,000',
-    },
-    {
-      id: 2,
-      title: '여성복장',
-      image: '/womansclothes.jpg',
-      price: '₩65,000',
-    },
-    {
-      id: 3,
-      title: '아기옷',
-      image: '/babysclothes.jpg',
-      price: '₩25,000',
-    },
-    {
-      id: 4,
-      title: '강아지',
-      image: '/dog.jpg',
-      price: '₩35,000',
-    },
-  ];
-
-  // 사이즈 옵션
-  const sizeOptions = ['S', 'M', 'L', 'XL', 'XXL'];
-
+  // 상품 데이터 가져오기
   useEffect(() => {
-    const productId = params.id;
-    if (productId && typeof productId === 'string') {
-      const foundProduct = allProducts.find(p => p.id === parseInt(productId));
-      if (foundProduct) {
-        setProduct(foundProduct);
+    const fetchProduct = async () => {
+      const productId = params.id;
+      if (!productId || typeof productId !== "string") {
+        setError("잘못된 상품 ID입니다.");
+        setIsLoading(false);
+        return;
       }
-    }
+
+      try {
+        const baseUrl = getApiBaseUrl();
+        const response = await fetch(`${baseUrl}/products/${productId}`);
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error("상품을 찾을 수 없습니다.");
+          }
+          throw new Error("상품 정보를 가져오는데 실패했습니다.");
+        }
+
+        const data = await response.json();
+        setProduct(data);
+      } catch (err) {
+        console.error("상품 로딩 실패:", err);
+        setError(err instanceof Error ? err.message : "상품을 불러오는데 실패했습니다.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProduct();
   }, [params.id]);
+
+  // 가격 포맷팅 함수
+  const formatPrice = (price: number) => {
+    if (price === 0) return "가격 문의";
+    return `₩${price.toLocaleString()}`;
+  };
 
   // 수량 조절 함수들
   const increaseQuantity = () => {
-    setQuantity(prev => prev + 1);
+    setQuantity((prev) => prev + 1);
   };
 
   const decreaseQuantity = () => {
-    setQuantity(prev => prev > 1 ? prev - 1 : 1);
+    setQuantity((prev) => (prev > 1 ? prev - 1 : 1));
   };
 
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,21 +82,14 @@ export default function ProductDetailPage() {
   const handleAddToCart = async () => {
     if (!product) return;
 
-    if (!selectedSize) {
-      alert("사이즈를 선택해주세요.");
-      return;
-    }
-
     try {
-      setIsLoading(true);
+      setIsAddingToCart(true);
 
       // 로컬 스토리지에서 기존 장바구니 불러오기
       const existingCart = JSON.parse(localStorage.getItem("jikgumate_cart") || "[]");
 
-      // 같은 상품 ID + 같은 사이즈가 있는지 확인
-      const existingItemIndex = existingCart.findIndex(
-        (item: { id: number; size: string }) => item.id === product.id && item.size === selectedSize
-      );
+      // 같은 상품 ID가 있는지 확인
+      const existingItemIndex = existingCart.findIndex((item: { id: number }) => item.id === product.productId);
 
       if (existingItemIndex !== -1) {
         // 이미 있으면 수량만 증가
@@ -103,11 +97,11 @@ export default function ProductDetailPage() {
       } else {
         // 없으면 새로 추가
         const cartItem = {
-          id: product.id,
-          title: product.title,
-          image: product.image,
-          price: product.price,
-          size: selectedSize,
+          id: product.productId,
+          title: product.ko_name,
+          image: product.imageUrl,
+          price: formatPrice(product.price),
+          priceNumber: product.price,
           quantity: quantity,
           addedAt: new Date().toISOString(),
         };
@@ -117,12 +111,12 @@ export default function ProductDetailPage() {
       // 로컬 스토리지에 저장
       localStorage.setItem("jikgumate_cart", JSON.stringify(existingCart));
 
-      alert(`${product.title} (${selectedSize}) ${quantity}개가 장바구니에 추가되었습니다!`);
+      alert(`${product.ko_name} ${quantity}개가 장바구니에 추가되었습니다!`);
     } catch (error) {
       console.error("장바구니 추가 실패:", error);
       alert("장바구니 추가에 실패했습니다.");
     } finally {
-      setIsLoading(false);
+      setIsAddingToCart(false);
     }
   };
 
@@ -130,14 +124,32 @@ export default function ProductDetailPage() {
   const handlePurchase = () => {
     if (!product) return;
 
-    if (!selectedSize) {
-      alert('사이즈를 선택해주세요.');
-      return;
-    }
-
     // 구매 페이지로 이동 (구매요청 페이지로 이동)
-    router.push('/purchase-request');
+    router.push("/purchase-request");
   };
+
+  // 로딩 상태
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // 에러 상태
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <button onClick={() => router.back()} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            뒤로 가기
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -152,17 +164,16 @@ export default function ProductDetailPage() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8">
-
             {/* 왼쪽: 상품 이미지 */}
             <div className="flex justify-center">
               <div className="relative">
                 <img
-                  src={product.image}
-                  alt={product.title}
+                  src={product.imageUrl || "/placeholder-image.png"}
+                  alt={product.ko_name}
                   className="w-full max-w-md h-auto object-cover rounded-lg shadow-md"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
-                    target.src = '/placeholder-image.png';
+                    target.src = "/placeholder-image.png";
                   }}
                 />
               </div>
@@ -170,41 +181,15 @@ export default function ProductDetailPage() {
 
             {/* 오른쪽: 상품 정보 */}
             <div className="flex flex-col space-y-6">
-
               {/* 상품명 */}
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.title}</h1>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">{product.ko_name}</h1>
                 <div className="w-16 h-1 bg-blue-600 rounded"></div>
               </div>
 
               {/* 가격 */}
               <div>
-                <span className="text-3xl font-bold text-blue-600">{product.price}</span>
-              </div>
-
-              {/* 사이즈 선택 */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">사이즈 선택</h3>
-                <div className="grid grid-cols-5 gap-2">
-                  {sizeOptions.map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => setSelectedSize(size)}
-                      className={`py-2 px-4 border rounded-lg font-medium transition-colors ${
-                        selectedSize === size
-                          ? 'border-blue-600 bg-blue-600 text-white'
-                          : 'border-gray-300 hover:border-gray-400 text-gray-700'
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
-                </div>
-                {selectedSize && (
-                  <p className="text-sm text-green-600 mt-2">
-                    선택된 사이즈: <span className="font-medium">{selectedSize}</span>
-                  </p>
-                )}
+                <span className="text-3xl font-bold text-blue-600">{formatPrice(product.price)}</span>
               </div>
 
               {/* 수량 선택 */}
@@ -225,47 +210,43 @@ export default function ProductDetailPage() {
                     min="1"
                     className="w-20 h-10 text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <button
-                    onClick={increaseQuantity}
-                    className="w-10 h-10 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center justify-center font-bold text-gray-700 transition-colors"
-                  >
+                  <button onClick={increaseQuantity} className="w-10 h-10 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center justify-center font-bold text-gray-700 transition-colors">
                     +
                   </button>
                 </div>
               </div>
+
+              {/* 총 금액 */}
+              {product.price > 0 && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">총 상품 금액</span>
+                    <span className="text-2xl font-bold text-blue-600">{formatPrice(product.price * quantity)}</span>
+                  </div>
+                </div>
+              )}
 
               {/* 버튼들 */}
               <div className="space-y-3 pt-6">
                 {/* 장바구니 버튼 */}
                 <button
                   onClick={handleAddToCart}
-                  disabled={isLoading || !selectedSize}
+                  disabled={isAddingToCart}
                   className="w-full py-4 px-6 bg-blue-600 text-white rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {isLoading ? '처리 중...' : '장바구니 담기'}
+                  {isAddingToCart ? "처리 중..." : "장바구니 담기"}
                 </button>
 
                 {/* 구매하기 버튼 */}
-                <button
-                  onClick={handlePurchase}
-                  disabled={!selectedSize}
-                  className="w-full py-4 px-6 bg-red-600 text-white rounded-lg font-semibold text-lg hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
+                <button onClick={handlePurchase} className="w-full py-4 px-6 bg-red-600 text-white rounded-lg font-semibold text-lg hover:bg-red-700 transition-colors">
                   구매하기
                 </button>
               </div>
 
-              {/* 상품 설명 */}
+              {/* 상품 ID */}
               <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">상품 설명</h3>
-                <div className="text-gray-600 space-y-2">
-                  <p>• 고품질 소재 사용</p>
-                  <p>• 편안한 착용감</p>
-                  <p>• 세탁기 사용 가능</p>
-                  <p>• 다양한 사이즈 제공</p>
-                </div>
+                <p className="text-sm text-gray-500">상품 ID: {product.productId}</p>
               </div>
-
             </div>
           </div>
         </div>

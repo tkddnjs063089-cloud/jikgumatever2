@@ -206,6 +206,9 @@ export default function MyPage() {
                 <button onClick={() => setIsProfileModalOpen(true)} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
                   프로필 수정
                 </button>
+                <button onClick={() => setIsOrderHistoryModalOpen(true)} className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium">
+                  주문 내역
+                </button>
               </div>
             </div>
           </div>
