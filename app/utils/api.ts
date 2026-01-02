@@ -111,10 +111,19 @@ export async function fetchUserProfile(email: string) {
   }
 }
 
-// 사용자 목록 조회 (관리자용)
-export async function fetchUsers() {
+// 관리자용 사용자 목록 조회 (모든 사용자) - /users/all 엔드포인트
+export async function fetchAllUsers() {
   try {
-    const response = await apiCall('/users');
+    const baseUrl = getApiBaseUrl();
+    const url = `${baseUrl}/users/all`;
+
+    // 인증 헤더 가져오기
+    const authHeaders = getAuthHeaders();
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: authHeaders,
+    });
 
     if (!response.ok) {
       if (response.status === 401) {
