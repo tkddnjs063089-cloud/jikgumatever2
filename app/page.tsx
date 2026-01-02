@@ -1,41 +1,8 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { removeFromCart } from './utils/cart';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { fetchUserProfile } from './utils/api';
-
-// 임시: cart 함수들 직접 정의
-interface CartItem {
-  id: number;
-  title: string;
-  image: string;
-  price: string;
-  quantity: number;
-  addedAt: string;
-}
-
-const CART_KEY = 'jikgumate_cart';
-
-function getCart(): CartItem[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const stored = localStorage.getItem(CART_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch (error) {
-    console.error('장바구니 불러오기 실패:', error);
-    return [];
-  }
-}
-
-function saveCart(items: CartItem[]): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(CART_KEY, JSON.stringify(items));
-  } catch (error) {
-    console.error('장바구니 저장 실패:', error);
-  }
-}
 
 const WISHLIST_KEY = 'jikgumate_wishlist';
 
@@ -85,6 +52,7 @@ function removeFromWishlist(id: number): void {
 function HomeContent() {
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
+  const router = useRouter();
 
   // 관리자 권한 및 모달 상태
   const [isAdmin, setIsAdmin] = useState(false);
@@ -131,19 +99,14 @@ function HomeContent() {
       )
     : allCategories;
 
-  // 위시리스트 및 장바구니 상태
+  // 위시리스트 상태
   const [likedItems, setLikedItems] = useState<Set<number>>(new Set());
-  const [cartItems, setCartItems] = useState<Set<number>>(new Set());
 
-  // 컴포넌트 마운트 시 wishlist와 cart 상태 불러오기
+  // 컴포넌트 마운트 시 wishlist 상태 불러오기
   useEffect(() => {
     const currentWishlist = getWishlist();
     const likedIds = new Set(currentWishlist.map(item => item.id));
     setLikedItems(likedIds);
-
-    const currentCart = getCart();
-    const cartIds = new Set(currentCart.map(item => item.id));
-    setCartItems(cartIds);
   }, []);
 
   // 관리자 권한 확인
@@ -166,6 +129,11 @@ function HomeContent() {
     checkAdminStatus();
   }, []);
 
+  // 상품 상세 페이지로 이동
+  const goToProductDetail = (categoryId: number) => {
+    router.push(`/product/${categoryId}`);
+  };
+
   const toggleLike = (categoryId: number) => {
     const category = categories.find(cat => cat.id === categoryId);
     if (!category) return;
@@ -186,29 +154,6 @@ function HomeContent() {
     setLikedItems(newLikedItems);
   };
 
-  const handleAddToCart = (categoryId: number) => {
-    const category = categories.find(cat => cat.id === categoryId);
-    if (!category) return;
-
-    const newCartItems = new Set(cartItems);
-    if (newCartItems.has(categoryId)) {
-      newCartItems.delete(categoryId);
-      removeFromCart(categoryId);
-    } else {
-      newCartItems.add(categoryId);
-      const cartItem: CartItem = {
-        id: category.id,
-        title: category.title,
-        image: category.image,
-        price: category.price,
-        quantity: 1,
-        addedAt: new Date().toISOString(),
-      };
-      const currentCart = getCart();
-      saveCart([...currentCart, cartItem]);
-    }
-    setCartItems(newCartItems);
-  };
 
   // 상품 추가 모달 열기
   const openAddProductModal = () => {
@@ -262,7 +207,8 @@ function HomeContent() {
             {categories.map((category) => (
               <div
                 key={category.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => goToProductDetail(category.id)}
               >
                 {/* 상품 이미지 */}
                 <div className="relative">
@@ -299,7 +245,7 @@ function HomeContent() {
                         />
                       </svg>
                       <span className={likedItems.has(category.id) ? 'text-red-500' : 'text-gray-600'}>
-                        {likedItems.has(category.id) ? '찜 해제' : '찜하기'}
+                        찜하기
                       </span>
                     </div>
                   </button>
@@ -308,22 +254,7 @@ function HomeContent() {
                 {/* 카테고리 제목과 가격 */}
                 <div className="p-4">
                   <h3 className="text-lg font-medium text-gray-900 text-center mb-2">{category.title}</h3>
-                  <p className="text-xl font-bold text-gray-900 text-center mb-4">{category.price}</p>
-
-                  {/* 장바구니 추가 버튼 */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAddToCart(category.id);
-                    }}
-                    className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${
-                      cartItems.has(category.id)
-                        ? 'bg-red-600 text-white hover:bg-red-700'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}
-                  >
-                    {cartItems.has(category.id) ? '삭제' : '장바구니 담기'}
-                  </button>
+                  <p className="text-xl font-bold text-gray-900 text-center">{category.price}</p>
                 </div>
               </div>
             ))}
