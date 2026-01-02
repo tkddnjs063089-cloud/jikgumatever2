@@ -168,7 +168,7 @@ export default function AdminOrderItemsPage() {
   };
 
   const handleCancelOrder = async (orderId: number) => {
-    if (!confirm("정말 이 주문을 취소하시겠습니까?")) return;
+    if (!confirm("정말 이 주문을 삭제하시겠습니까?")) return;
 
     setSavingStatus((prev) => ({ ...prev, [orderId]: true }));
 
@@ -180,31 +180,30 @@ export default function AdminOrderItemsPage() {
         throw new Error("로그인이 필요합니다.");
       }
 
-      const response = await fetch(`${baseUrl}/orders/${orderId}/status`, {
-        method: "PATCH",
+      const response = await fetch(`${baseUrl}/orders/${orderId}`, {
+        method: "DELETE",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status: "CANCELLED" }),
       });
 
       if (!response.ok) {
         const contentType = response.headers.get("content-type");
         if (contentType && contentType.includes("application/json")) {
           const errorData = await response.json();
-          throw new Error(errorData.message || "주문 취소에 실패했습니다.");
+          throw new Error(errorData.message || "주문 삭제에 실패했습니다.");
         } else {
           const errorText = await response.text();
           console.error("API Error:", errorText);
-          throw new Error("주문 취소에 실패했습니다.");
+          throw new Error("주문 삭제에 실패했습니다.");
         }
       }
 
       await fetchOrders();
-      alert("주문이 취소되었습니다.");
+      alert("주문이 삭제되었습니다.");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "주문 취소에 실패했습니다.");
+      alert(err instanceof Error ? err.message : "주문 삭제에 실패했습니다.");
     } finally {
       setSavingStatus((prev) => ({ ...prev, [orderId]: false }));
     }
@@ -231,14 +230,10 @@ export default function AdminOrderItemsPage() {
     switch (status.toUpperCase()) {
       case "PENDING":
         return "대기중";
-      case "PROCESSING":
-        return "처리중";
       case "SHIPPED":
         return "배송중";
       case "DELIVERED":
         return "배송완료";
-      case "CANCELLED":
-        return "취소됨";
       default:
         return status;
     }
@@ -310,10 +305,10 @@ export default function AdminOrderItemsPage() {
                     </button>
                     <button
                       onClick={() => handleCancelOrder(order.orderId)}
-                      disabled={savingStatus[order.orderId] || order.status === "CANCELLED"}
+                      disabled={savingStatus[order.orderId]}
                       className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      취소
+                      삭제
                     </button>
                   </div>
                 </div>
