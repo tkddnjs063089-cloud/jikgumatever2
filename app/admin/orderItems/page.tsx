@@ -215,7 +215,7 @@ export default function AdminOrderItemsPage() {
         return "bg-yellow-100 text-yellow-800";
       case "PROCESSING":
         return "bg-blue-100 text-blue-800";
-      case "SHIPPED":
+      case "SHIPPING":
         return "bg-purple-100 text-purple-800";
       case "DELIVERED":
         return "bg-green-100 text-green-800";
@@ -230,7 +230,7 @@ export default function AdminOrderItemsPage() {
     switch (status.toUpperCase()) {
       case "PENDING":
         return "대기중";
-      case "SHIPPED":
+      case "SHIPPING":
         return "배송중";
       case "DELIVERED":
         return "배송완료";
@@ -293,7 +293,7 @@ export default function AdminOrderItemsPage() {
                       className="px-3 py-1 border border-gray-300 rounded text-sm"
                     >
                       <option value="PENDING">대기중</option>
-                      <option value="SHIPPED">배송중</option>
+                      <option value="SHIPPING">배송중</option>
                       <option value="DELIVERED">배송완료</option>
                     </select>
                     <button
