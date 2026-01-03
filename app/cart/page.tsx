@@ -41,6 +41,7 @@ export default function CartPage() {
   const [cartData, setCartData] = useState<CartData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isOrdering, setIsOrdering] = useState(false);
 
   // 장바구니 데이터 가져오기
   useEffect(() => {
@@ -102,14 +103,42 @@ export default function CartPage() {
     });
   };
 
-  // 아이템 삭제 (UI만, 나중에 API 연동)
-  const handleRemoveFromCart = (cartItemId: number) => {
+  // 아이템 삭제
+  const handleRemoveFromCart = async (cartItemId: number) => {
     if (!cartData) return;
-    
-    setCartData({
-      ...cartData,
-      cartItems: cartData.cartItems.filter((item) => item.cartItemId !== cartItemId),
-    });
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("로그인이 필요합니다.");
+        router.push("/login");
+        return;
+      }
+
+      const baseUrl = getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/carts/items/${cartItemId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          alert("로그인이 필요합니다.");
+          router.push("/login");
+          return;
+        }
+        throw new Error("장바구니에서 삭제하는데 실패했습니다.");
+      }
+
+      // 성공 시 장바구니 데이터 다시 불러오기
+      await fetchCart();
+    } catch (err) {
+      console.error("장바구니 삭제 실패:", err);
+      alert(err instanceof Error ? err.message : "장바구니에서 삭제하는데 실패했습니다.");
+    }
   };
 
   // 가격 포맷팅
@@ -126,6 +155,62 @@ export default function CartPage() {
       const price = parseFloat(item.product.priceUsd) || 0;
       return total + price * item.quantity;
     }, 0);
+  };
+
+  // 주문하기 - 모든 장바구니 아이템의 수량을 백엔드에 동기화
+  const handleOrder = async () => {
+    if (!cartData || !cartData.cartItems || cartData.cartItems.length === 0) {
+      return;
+    }
+
+    setIsOrdering(true);
+    setError("");
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("로그인이 필요합니다.");
+        router.push("/login");
+        return;
+      }
+
+      const baseUrl = getApiBaseUrl();
+
+      // 모든 장바구니 아이템의 수량을 백엔드에 업데이트
+      const updatePromises = cartData.cartItems.map(async (item) => {
+        const response = await fetch(`${baseUrl}/carts/items/${item.cartItemId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            quantity: item.quantity,
+          }),
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error("로그인이 필요합니다.");
+          }
+          throw new Error(`상품 수량 업데이트에 실패했습니다. (상품 ID: ${item.cartItemId})`);
+        }
+
+        return response.json();
+      });
+
+      // 모든 업데이트 요청이 완료될 때까지 대기
+      await Promise.all(updatePromises);
+
+      // 성공 메시지 및 장바구니 새로고침
+      alert("주문이 완료되었습니다!");
+      await fetchCart(); // 장바구니 데이터 다시 불러오기
+    } catch (err) {
+      console.error("주문 처리 실패:", err);
+      setError(err instanceof Error ? err.message : "주문 처리에 실패했습니다.");
+    } finally {
+      setIsOrdering(false);
+    }
   };
 
   // 로딩 상태
@@ -280,8 +365,12 @@ export default function CartPage() {
               <span>{t("cart.totalPayment")}</span>
               <span>{(Math.round(totalPrice) + 3000).toLocaleString()}원</span>
             </div>
-            <button className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg mt-6">
-              {t("cart.order")}
+            <button
+              onClick={handleOrder}
+              disabled={isOrdering}
+              className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isOrdering ? "주문 처리 중..." : t("cart.order")}
             </button>
           </div>
         </div>
