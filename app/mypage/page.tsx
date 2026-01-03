@@ -203,16 +203,65 @@ export default function MyPage() {
 
               {/* 오른쪽: 버튼들 */}
               <div className="flex-shrink-0 flex flex-col gap-3">
-                <button onClick={handleLogout} className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium">
+                <button onClick={handleLogout} className="px-6 py-2 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium">
                   {t("mypage.logout")}
                 </button>
-                <button onClick={() => setIsProfileModalOpen(true)} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                <button onClick={() => setIsProfileModalOpen(true)} className="px-6 py-2 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium">
                   {t("mypage.editProfile")}
                 </button>
-                <button onClick={() => setIsOrderHistoryModalOpen(true)} className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium">
-                  {t("mypage.orderHistory")}
-                </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* 로그인한 경우: 주문내역 및 문의 섹션 */}
+        {isLoggedIn && (
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="flex gap-4">
+              <button
+                onClick={() => setIsOrderHistoryModalOpen(true)}
+                className="flex-1 px-6 py-4 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium text-left border border-gray-200 hover:border-gray-300"
+              >
+                <div className="flex items-center gap-3">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-6 h-6"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h11.25c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z"
+                    />
+                  </svg>
+                  <span>{t("mypage.orderHistory")}</span>
+                </div>
+              </button>
+              <Link
+                href="/report"
+                className="flex-1 px-6 py-4 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium text-left border border-gray-200 hover:border-gray-300"
+              >
+                <div className="flex items-center gap-3">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-6 h-6"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"
+                    />
+                  </svg>
+                  <span>문의</span>
+                </div>
+              </Link>
             </div>
           </div>
         )}
