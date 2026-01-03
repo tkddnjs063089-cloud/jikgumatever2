@@ -1,112 +1,163 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
+import { getApiBaseUrl } from "../utils/api";
 import "../i18n/config";
 
-// 장바구니 아이템 타입
+// 백엔드 응답 타입
+interface CartProduct {
+  productId: number;
+  originalUrl: string;
+  nameKo: string;
+  nameEn: string;
+  category: string;
+  priceUsd: string;
+  imageUrl: string;
+  createdAt: string;
+}
+
 interface CartItem {
-  id: number;
-  title: string;
-  image: string;
-  price: string;
-  size: string;
+  cartItemId: number;
+  cartId: number;
+  productId: number;
   quantity: number;
-  addedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  product: CartProduct;
 }
 
-const CART_KEY = "jikgumate_cart";
-
-function getCart(): CartItem[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const stored = localStorage.getItem(CART_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch (error) {
-    console.error("장바구니 불러오기 실패:", error);
-    return [];
-  }
-}
-
-function saveCart(items: CartItem[]): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(CART_KEY, JSON.stringify(items));
-  } catch (error) {
-    console.error("장바구니 저장 실패:", error);
-  }
-}
-
-function removeFromCart(id: number, size: string): void {
-  const currentItems = getCart();
-  const newItems = currentItems.filter((item) => !(item.id === id && item.size === size));
-  saveCart(newItems);
-}
-
-function updateCartItemQuantity(id: number, size: string, quantity: number): void {
-  const currentItems = getCart();
-  const item = currentItems.find((item) => item.id === id && item.size === size);
-
-  if (item) {
-    if (quantity <= 0) {
-      removeFromCart(id, size);
-    } else {
-      item.quantity = quantity;
-      saveCart(currentItems);
-    }
-  }
-}
-
-function clearCart(): void {
-  saveCart([]);
-}
-
-function getCartTotal(): number {
-  const items = getCart();
-  return items.reduce((total, item) => {
-    const price = parseInt(item.price.replace(/[^\d]/g, "")) || 0;
-    return total + price * item.quantity;
-  }, 0);
-}
-
-// 고유 키 생성 (id + size 조합)
-function getCartItemKey(id: number, size: string): string {
-  return `${id}-${size}`;
+interface CartData {
+  cartId: number;
+  userId: number;
+  updatedAt: string;
+  cartItems: CartItem[];
 }
 
 export default function CartPage() {
   const { t } = useTranslation();
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const router = useRouter();
+  const [cartData, setCartData] = useState<CartData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // 컴포넌트 마운트 시 장바구니 데이터 불러오기
+  // 장바구니 데이터 가져오기
   useEffect(() => {
-    const items = getCart();
-    setCartItems(items);
+    fetchCart();
   }, []);
 
-  const handleRemoveFromCart = (id: number, size: string) => {
-    removeFromCart(id, size);
-    setCartItems((prev) => prev.filter((item) => !(item.id === id && item.size === size)));
-  };
+  const fetchCart = async () => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem("token");
+      
+      if (!token) {
+        setError("로그인이 필요합니다.");
+        setIsLoading(false);
+        return;
+      }
 
-  const handleUpdateQuantity = (id: number, size: string, newQuantity: number) => {
-    updateCartItemQuantity(id, size, newQuantity);
-    setCartItems((prev) =>
-      prev.map((item) => (item.id === id && item.size === size ? { ...item, quantity: Math.max(1, newQuantity) } : item))
-    );
-  };
+      const baseUrl = getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/carts`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-  const handleClearCart = () => {
-    if (confirm(t("cart.confirmClear"))) {
-      clearCart();
-      setCartItems([]);
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError("로그인이 필요합니다.");
+          router.push("/login");
+          return;
+        }
+        throw new Error("장바구니를 불러오는데 실패했습니다.");
+      }
+
+      const data: CartData = await response.json();
+      setCartData(data);
+    } catch (err) {
+      console.error("장바구니 불러오기 실패:", err);
+      setError(err instanceof Error ? err.message : "장바구니를 불러오는데 실패했습니다.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const totalPrice = getCartTotal();
+  // 수량 변경 (UI만, 나중에 API 연동)
+  const handleUpdateQuantity = (cartItemId: number, newQuantity: number) => {
+    if (!cartData) return;
+    
+    if (newQuantity < 1) {
+      return;
+    }
+
+    setCartData({
+      ...cartData,
+      cartItems: cartData.cartItems.map((item) =>
+        item.cartItemId === cartItemId ? { ...item, quantity: newQuantity } : item
+      ),
+    });
+  };
+
+  // 아이템 삭제 (UI만, 나중에 API 연동)
+  const handleRemoveFromCart = (cartItemId: number) => {
+    if (!cartData) return;
+    
+    setCartData({
+      ...cartData,
+      cartItems: cartData.cartItems.filter((item) => item.cartItemId !== cartItemId),
+    });
+  };
+
+  // 가격 포맷팅
+  const formatPrice = (priceUsd: string) => {
+    const price = parseFloat(priceUsd);
+    if (price === 0) return t("home.priceInquiry");
+    return `₩${Math.round(price).toLocaleString()}`;
+  };
+
+  // 총 금액 계산
+  const getTotalPrice = () => {
+    if (!cartData || !cartData.cartItems) return 0;
+    return cartData.cartItems.reduce((total, item) => {
+      const price = parseFloat(item.product.priceUsd) || 0;
+      return total + price * item.quantity;
+    }, 0);
+  };
+
+  // 로딩 상태
+  if (isLoading) {
+    return (
+      <div className="max-w-[1200px] mx-auto px-4 py-8">
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // 에러 상태
+  if (error) {
+    return (
+      <div className="max-w-[1200px] mx-auto px-4 py-8">
+        <div className="text-center py-20">
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={() => router.push("/login")}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            {t("header.login")}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // 빈 장바구니 상태
-  if (cartItems.length === 0) {
+  if (!cartData || !cartData.cartItems || cartData.cartItems.length === 0) {
     return (
       <div className="max-w-[1200px] mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">{t("cart.title")}</h1>
@@ -126,78 +177,92 @@ export default function CartPage() {
     );
   }
 
+  const totalPrice = getTotalPrice();
+
   return (
     <div className="max-w-[1200px] mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">{t("cart.title")}</h1>
-        </div>
-        <button onClick={handleClearCart} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-          {t("cart.clearCart")}
-        </button>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">{t("cart.title")}</h1>
       </div>
 
       <div className="space-y-4">
-        {cartItems.map((item) => (
-          <div
-            key={getCartItemKey(item.id, item.size)}
-            className="border border-gray-200 rounded-lg p-6 bg-white flex items-center gap-6 hover:shadow-md transition-shadow"
-          >
-            {/* 상품 이미지 */}
-            <div className="w-24 h-24 bg-gray-100 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
-              <img
-                src={item.image}
-                alt={item.title}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.src = "/placeholder-image.png";
-                }}
-              />
-            </div>
-
-            {/* 상품 정보 */}
-            <div className="flex-1">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">{item.title}</h3>
-              <div className="flex items-center gap-4 text-gray-600 mb-2">
-                <span className="bg-gray-100 px-2 py-1 rounded text-sm font-medium">{t("cart.size")}: {item.size}</span>
-                <span>{t("cart.unitPrice")}: {item.price}</span>
+        {cartData.cartItems.map((item) => {
+          const itemPrice = parseFloat(item.product.priceUsd) || 0;
+          const itemTotal = itemPrice * item.quantity;
+          
+          return (
+            <div
+              key={item.cartItemId}
+              className="border border-gray-200 rounded-lg p-6 bg-white flex items-center gap-6 hover:shadow-md transition-shadow"
+            >
+              {/* 상품 이미지 */}
+              <div className="w-24 h-24 bg-gray-100 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
+                <img
+                  src={item.product.imageUrl || "/placeholder-image.png"}
+                  alt={item.product.nameKo}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = "/placeholder-image.png";
+                  }}
+                />
               </div>
 
-              {/* 수량 조절 */}
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">{t("cart.quantity")}:</label>
+              {/* 상품 정보 */}
+              <div className="flex-1">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{item.product.nameKo}</h3>
+                <div className="flex items-center gap-4 text-gray-600 mb-2">
+                  <span>{t("cart.unitPrice")}: {formatPrice(item.product.priceUsd)}</span>
+                </div>
+
+                {/* 수량 조절 */}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600">{t("cart.quantity")}:</label>
+                  <button
+                    onClick={() => handleUpdateQuantity(item.cartItemId, item.quantity - 1)}
+                    disabled={item.quantity <= 1}
+                    className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    -
+                  </button>
+                  <span className="w-12 text-center">{item.quantity}</span>
+                  <button
+                    onClick={() => handleUpdateQuantity(item.cartItemId, item.quantity + 1)}
+                    className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* 가격 및 삭제 */}
+              <div className="text-right flex flex-col items-end gap-4">
+                <div className="text-xl font-bold text-gray-900">
+                  {Math.round(itemTotal).toLocaleString()}원
+                </div>
                 <button
-                  onClick={() => handleUpdateQuantity(item.id, item.size, item.quantity - 1)}
-                  disabled={item.quantity <= 1}
-                  className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => handleRemoveFromCart(item.cartItemId)}
+                  className="text-gray-500 hover:text-red-600 transition-colors p-2 rounded-full hover:bg-red-50"
+                  aria-label={t("cart.delete")}
                 >
-                  -
-                </button>
-                <span className="w-12 text-center">{item.quantity}</span>
-                <button
-                  onClick={() => handleUpdateQuantity(item.id, item.size, item.quantity + 1)}
-                  className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50"
-                >
-                  +
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-6 h-6"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
                 </button>
               </div>
             </div>
-
-            {/* 가격 및 삭제 */}
-            <div className="text-right">
-              <div className="text-xl font-bold text-gray-900 mb-4">
-                {(parseInt(item.price.replace(/[^\d]/g, "")) * item.quantity).toLocaleString()}원
-              </div>
-              <button
-                onClick={() => handleRemoveFromCart(item.id, item.size)}
-                className="text-red-500 hover:text-red-700 transition-colors px-3 py-1 rounded border border-red-200 hover:bg-red-50"
-                aria-label={t("cart.delete")}
-              >
-                {t("cart.delete")}
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="mt-8 border-t border-gray-200 pt-6">
@@ -205,7 +270,7 @@ export default function CartPage() {
           <div className="w-full max-w-md space-y-4">
             <div className="flex justify-between text-lg text-gray-700">
               <span>{t("cart.totalProductPrice")}</span>
-              <span>{totalPrice.toLocaleString()}원</span>
+              <span>{Math.round(totalPrice).toLocaleString()}원</span>
             </div>
             <div className="flex justify-between text-lg text-gray-700">
               <span>{t("cart.shippingFee")}</span>
@@ -213,7 +278,7 @@ export default function CartPage() {
             </div>
             <div className="flex justify-between text-2xl font-bold text-gray-900 pt-4 border-t border-gray-200">
               <span>{t("cart.totalPayment")}</span>
-              <span>{(totalPrice + 3000).toLocaleString()}원</span>
+              <span>{(Math.round(totalPrice) + 3000).toLocaleString()}원</span>
             </div>
             <button className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg mt-6">
               {t("cart.order")}
