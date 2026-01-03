@@ -85,36 +85,43 @@ export default function ProductDetailPage() {
     try {
       setIsAddingToCart(true);
 
-      // 로컬 스토리지에서 기존 장바구니 불러오기
-      const existingCart = JSON.parse(localStorage.getItem("jikgumate_cart") || "[]");
-
-      // 같은 상품 ID가 있는지 확인
-      const existingItemIndex = existingCart.findIndex((item: { id: number }) => item.id === product.productId);
-
-      if (existingItemIndex !== -1) {
-        // 이미 있으면 수량만 증가
-        existingCart[existingItemIndex].quantity += quantity;
-      } else {
-        // 없으면 새로 추가
-        const cartItem = {
-          id: product.productId,
-          title: product.ko_name,
-          image: product.imageUrl,
-          price: formatPrice(product.price),
-          priceNumber: product.price,
-          quantity: quantity,
-          addedAt: new Date().toISOString(),
-        };
-        existingCart.push(cartItem);
+      // 토큰 확인
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("장바구니를 사용하려면 로그인이 필요합니다.");
+        router.push("/login");
+        return;
       }
 
-      // 로컬 스토리지에 저장
-      localStorage.setItem("jikgumate_cart", JSON.stringify(existingCart));
+      const baseUrl = getApiBaseUrl();
+      
+      // 백엔드 API에 장바구니 아이템 추가
+      const response = await fetch(`${baseUrl}/carts/items`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          productId: product.productId,
+          quantity: quantity,
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          alert("로그인이 필요합니다.");
+          router.push("/login");
+          return;
+        }
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "장바구니 추가에 실패했습니다.");
+      }
 
       alert(`${product.ko_name} ${quantity}개가 장바구니에 추가되었습니다!`);
     } catch (error) {
       console.error("장바구니 추가 실패:", error);
-      alert("장바구니 추가에 실패했습니다.");
+      alert(error instanceof Error ? error.message : "장바구니 추가에 실패했습니다.");
     } finally {
       setIsAddingToCart(false);
     }
