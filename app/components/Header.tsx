@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fetchUserProfile } from '../utils/api';
+import '../i18n/config';
 
 type Language = 'ko' | 'en' | 'ja' | 'zh' | 'es';
 
@@ -18,6 +20,7 @@ const languages: { code: Language; name: string; nativeName: string }[] = [
 export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
+  const { t, i18n } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [currentLanguage, setCurrentLanguage] = useState<Language>('ko');
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
@@ -26,6 +29,23 @@ export default function Header() {
   const [userInfo, setUserInfo] = useState<any>(null);
   const [authTrigger, setAuthTrigger] = useState(0);
   const languageMenuRef = useRef<HTMLDivElement>(null);
+
+  // localStorage에서 언어 불러오기 및 i18n과 동기화
+  useEffect(() => {
+    const storedLanguage = localStorage.getItem('language') as Language;
+    if (storedLanguage && ['ko', 'en', 'ja', 'zh', 'es'].includes(storedLanguage)) {
+      setCurrentLanguage(storedLanguage);
+      if (i18n.language !== storedLanguage) {
+        i18n.changeLanguage(storedLanguage);
+      }
+    } else {
+      // 저장된 언어가 없으면 i18n의 현재 언어로 설정
+      const lang = i18n.language as Language;
+      if (['ko', 'en', 'ja', 'zh', 'es'].includes(lang)) {
+        setCurrentLanguage(lang);
+      }
+    }
+  }, [i18n]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -110,8 +130,9 @@ export default function Header() {
 
   const handleLanguageChange = (lang: Language) => {
     setCurrentLanguage(lang);
+    i18n.changeLanguage(lang);
+    localStorage.setItem('language', lang);
     setIsLanguageMenuOpen(false);
-    console.log('언어 변경:', lang);
   };
 
   const handleLogout = () => {
@@ -151,7 +172,7 @@ export default function Header() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="상품 검색..."
+                    placeholder={t('header.searchPlaceholder')}
                     className="w-full px-4 py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                   <svg
@@ -245,13 +266,13 @@ export default function Header() {
             {isLoggedIn ? (
               <div className="flex items-center gap-2 text-xs">
                 <span className="font-medium text-gray-400">
-                  {userEmail}님 환영합니다
+                  {userEmail}{t('header.welcome')}
                 </span>
                 <button
                   onClick={handleLogout}
                   className="px-2 py-1 text-black rounded hover:bg-gray-200 transition-colors font-medium"
                 >
-                  로그아웃
+                  {t('header.logout')}
                 </button>
               </div>
             ) : (
@@ -260,14 +281,14 @@ export default function Header() {
                   href="/login"
                   className="text-gray-600 hover:text-gray-800 transition-colors"
                 >
-                  로그인
+                  {t('header.login')}
                 </Link>
                 <span className="text-gray-400">|</span>
                 <Link
                   href="/signup"
                   className="text-gray-600 hover:text-gray-800 transition-colors"
                 >
-                  회원가입
+                  {t('header.signup')}
                 </Link>
               </div>
             )}
@@ -276,7 +297,7 @@ export default function Header() {
               href="/mypage"
               className="text-gray-700 hover:text-gray-900 font-medium transition-colors"
             >
-              마이페이지
+              {t('header.mypage')}
             </Link>
             <Link
               href="/cart"
@@ -313,7 +334,7 @@ export default function Header() {
                   : 'text-gray-700 hover:text-gray-900'
               }`}
             >
-              관리자
+              {t('header.admin')}
             </Link>
           )}
           <Link
@@ -324,7 +345,7 @@ export default function Header() {
                 : 'text-gray-700 hover:text-gray-900'
             }`}
           >
-            구매요청
+            {t('header.purchaseRequest')}
           </Link>
           <Link
             href="/wishlist"
@@ -334,7 +355,7 @@ export default function Header() {
                 : 'text-gray-700 hover:text-gray-900'
             }`}
           >
-            찜
+            {t('header.wishlist')}
           </Link>
         </div>
       </nav>

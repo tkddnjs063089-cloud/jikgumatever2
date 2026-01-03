@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { getApiBaseUrl } from "@/app/utils/api";
+import "../../i18n/config";
 
 interface Product {
   productId: number;
@@ -47,6 +49,7 @@ interface OrderHistoryModalProps {
 }
 
 export default function OrderHistoryModal({ onClose }: OrderHistoryModalProps) {
+  const { t } = useTranslation();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -61,7 +64,7 @@ export default function OrderHistoryModal({ onClose }: OrderHistoryModalProps) {
       const token = localStorage.getItem("token");
 
       if (!token) {
-        throw new Error("로그인이 필요합니다.");
+        throw new Error(t("mypage.loginRequired"));
       }
 
       const response = await fetch(`${baseUrl}/orders/my`, {
@@ -74,16 +77,16 @@ export default function OrderHistoryModal({ onClose }: OrderHistoryModalProps) {
 
       if (!response.ok) {
         if (response.status === 401) {
-          throw new Error("인증이 필요합니다.");
+          throw new Error(t("mypage.authRequired"));
         }
-        throw new Error("주문 내역을 가져오는데 실패했습니다.");
+        throw new Error(t("mypage.fetchOrdersFailed"));
       }
 
       const data = await response.json();
       setOrders(data);
     } catch (err) {
       console.error("fetchMyOrders error:", err);
-      setError(err instanceof Error ? err.message : "주문 내역을 불러오는데 실패했습니다.");
+      setError(err instanceof Error ? err.message : t("mypage.orderHistoryError"));
     } finally {
       setLoading(false);
     }
@@ -107,13 +110,13 @@ export default function OrderHistoryModal({ onClose }: OrderHistoryModalProps) {
   const getStatusText = (status: string) => {
     switch (status.toUpperCase()) {
       case "PENDING":
-        return "대기중";
+        return t("mypage.pending");
       case "SHIPPING":
-        return "배송중";
+        return t("mypage.shipping");
       case "DELIVERED":
-        return "배송완료";
+        return t("mypage.delivered");
       case "CANCELLED":
-        return "취소됨";
+        return t("mypage.cancelled");
       default:
         return status;
     }
@@ -137,8 +140,8 @@ export default function OrderHistoryModal({ onClose }: OrderHistoryModalProps) {
       <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* 헤더 */}
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold">주문 내역</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors" aria-label="닫기">
+          <h2 className="text-xl font-bold">{t("mypage.orderHistory")}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors" aria-label={t("mypage.close")}>
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -154,19 +157,19 @@ export default function OrderHistoryModal({ onClose }: OrderHistoryModalProps) {
           ) : error ? (
             <div className="text-center py-12 text-red-600">{error}</div>
           ) : orders.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">주문 내역이 없습니다.</div>
+            <div className="text-center py-12 text-gray-500">{t("mypage.noOrders")}</div>
           ) : (
             <div className="space-y-4">
               {orders.map((order) => (
                 <div key={order.orderId} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <p className="text-sm text-gray-500">주문번호</p>
+                      <p className="text-sm text-gray-500">{t("mypage.orderNumber")}</p>
                       <p className="text-lg font-medium">#{order.orderId}</p>
                       <p className="text-sm text-gray-500 mt-1">{formatDate(order.orderDate)}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-gray-500 mb-1">주문 상태</p>
+                      <p className="text-sm text-gray-500 mb-1">{t("mypage.orderStatus")}</p>
                       <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>{getStatusText(order.status)}</span>
                     </div>
                   </div>
@@ -185,7 +188,7 @@ export default function OrderHistoryModal({ onClose }: OrderHistoryModalProps) {
                         />
                         <div className="flex-1">
                           <p className="text-gray-900 font-medium">{item.product.nameKo}</p>
-                          <p className="text-sm text-gray-500">수량: {item.quantity}개</p>
+                          <p className="text-sm text-gray-500">{t("mypage.quantity")}: {item.quantity}</p>
                         </div>
                         <p className="text-gray-900 font-medium">{formatPrice((parseFloat(item.product.priceUsd) * item.quantity).toString())}</p>
                       </div>
@@ -195,14 +198,14 @@ export default function OrderHistoryModal({ onClose }: OrderHistoryModalProps) {
                   {/* 배송 정보 */}
                   {order.shippingInfo && (
                     <div className="border-t border-gray-200 pt-4 mb-4">
-                      <p className="text-sm text-gray-500 mb-2">배송 정보</p>
+                      <p className="text-sm text-gray-500 mb-2">{t("mypage.shippingInfo")}</p>
                       <p className="text-sm text-gray-700">
                         {order.shippingInfo.recipientName} | {order.shippingInfo.recipientPhone}
                       </p>
                       <p className="text-sm text-gray-700">{order.shippingInfo.recipientAddress}</p>
                       {order.shippingInfo.trackingNumber && (
                         <p className="text-sm text-blue-600 mt-1">
-                          운송장: {order.shippingInfo.shippingCompany} {order.shippingInfo.trackingNumber}
+                          {t("mypage.trackingNumber")}: {order.shippingInfo.shippingCompany} {order.shippingInfo.trackingNumber}
                         </p>
                       )}
                     </div>
@@ -210,7 +213,7 @@ export default function OrderHistoryModal({ onClose }: OrderHistoryModalProps) {
 
                   <div className="flex justify-end pt-4 border-t border-gray-200">
                     <div className="text-right">
-                      <p className="text-sm text-gray-500 mb-1">총 결제 금액</p>
+                      <p className="text-sm text-gray-500 mb-1">{t("mypage.totalPayment")}</p>
                       <p className="text-xl font-bold text-blue-600">{formatPrice(order.totalAmount)}</p>
                     </div>
                   </div>

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import '../../i18n/config';
 
 interface Profile {
   nickname: string;
@@ -16,6 +18,7 @@ interface ProfileEditModalProps {
 }
 
 export default function ProfileEditModal({ profile, onSave, onClose }: ProfileEditModalProps) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<Profile>(profile);
   const [imagePreview, setImagePreview] = useState<string>(profile.profileImage);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,12 +58,12 @@ export default function ProfileEditModal({ profile, onSave, onClose }: ProfileEd
       const email = formData.email;
 
       if (!token) {
-        setError('로그인이 필요합니다.');
+        setError(t('mypage.loginRequiredError'));
         return;
       }
 
       if (!email) {
-        setError('이메일이 필요합니다.');
+        setError(t('mypage.emailRequired'));
         return;
       }
 
@@ -101,11 +104,11 @@ export default function ProfileEditModal({ profile, onSave, onClose }: ProfileEd
         onClose();
       } else {
         const errorData = await response.json();
-        setError(errorData.message || '프로필 수정에 실패했습니다.');
+        setError(errorData.message || t('mypage.updateFailed'));
       }
     } catch (error) {
       console.error('프로필 수정 오류:', error);
-      setError('프로필 수정 중 오류가 발생했습니다.');
+      setError(t('mypage.updateError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -121,11 +124,11 @@ export default function ProfileEditModal({ profile, onSave, onClose }: ProfileEd
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">프로필 편집</h2>
+          <h2 className="text-xl font-bold">{t('mypage.editProfile')}</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
-            aria-label="닫기"
+            aria-label={t('mypage.close')}
           >
             <svg 
               className="w-6 h-6" 
@@ -171,7 +174,7 @@ export default function ProfileEditModal({ profile, onSave, onClose }: ProfileEd
             </div>
             <label className="cursor-pointer">
               <span className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
-                사진 변경
+                {t('mypage.changePhoto')}
               </span>
               <input
                 type="file"
@@ -185,7 +188,7 @@ export default function ProfileEditModal({ profile, onSave, onClose }: ProfileEd
           {/* 닉네임 */}
           <div>
             <label htmlFor="nickname" className="block text-sm font-medium text-gray-700 mb-1">
-              닉네임
+              {t('mypage.nickname')}
             </label>
             <input
               type="text"
@@ -201,7 +204,7 @@ export default function ProfileEditModal({ profile, onSave, onClose }: ProfileEd
           {/* 이메일 */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              이메일
+              {t('mypage.email')}
             </label>
             <input
               type="email"
@@ -229,14 +232,14 @@ export default function ProfileEditModal({ profile, onSave, onClose }: ProfileEd
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              취소
+              {t('mypage.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? '저장 중...' : '저장'}
+              {isSubmitting ? t('mypage.saving') : t('mypage.save')}
             </button>
           </div>
         </form>

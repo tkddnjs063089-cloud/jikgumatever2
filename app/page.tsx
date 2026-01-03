@@ -2,7 +2,9 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { fetchUserProfile, getApiBaseUrl } from "./utils/api";
+import "./i18n/config";
 
 const WISHLIST_KEY = "jikgumate_wishlist";
 
@@ -57,6 +59,7 @@ function removeFromWishlist(id: number): void {
 
 // 실제 홈 콘텐츠 컴포넌트 (useSearchParams 사용)
 function HomeContent() {
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("search") || "";
   const router = useRouter();
@@ -105,7 +108,7 @@ function HomeContent() {
         setProducts(data);
       } catch (error) {
         console.error("상품 로딩 실패:", error);
-        setLoadError(error instanceof Error ? error.message : "상품을 불러오는데 실패했습니다.");
+        setLoadError(error instanceof Error ? error.message : t("home.noProducts"));
       } finally {
         setIsLoading(false);
       }
@@ -141,7 +144,7 @@ function HomeContent() {
 
   // 가격 포맷팅 함수
   const formatPrice = (price: number) => {
-    if (price === 0) return "가격 문의";
+    if (price === 0) return t("home.priceInquiry");
     return `₩${price.toLocaleString()}`;
   };
 
@@ -183,7 +186,7 @@ function HomeContent() {
     if (file) {
       // 파일 크기 체크 (5MB 제한)
       if (file.size > 5 * 1024 * 1024) {
-        alert("이미지 크기는 5MB 이하로 선택해주세요.");
+        alert(t("home.imageSizeLimit"));
         return;
       }
 
@@ -203,18 +206,18 @@ function HomeContent() {
     e.preventDefault();
 
     if (!newProduct.name || !newProduct.price || !newProduct.stock) {
-      alert("모든 필드를 입력해주세요.");
+      alert(t("home.allFieldsRequired"));
       return;
     }
 
     try {
       // TODO: 백엔드 API로 상품 추가 요청
       console.log("새 상품 추가:", newProduct);
-      alert("상품이 성공적으로 추가되었습니다!");
+      alert(t("home.productAddedSuccess"));
       closeAddProductModal();
     } catch (error) {
       console.error("상품 추가 실패:", error);
-      alert("상품 추가에 실패했습니다.");
+      alert(t("home.productAddFailed"));
     }
   };
 
@@ -227,7 +230,7 @@ function HomeContent() {
           {searchQuery && (
             <div className="mb-6 text-center">
               <p className="text-lg text-gray-600">
-                "<span className="font-medium text-gray-900">{searchQuery}</span>" 검색 결과
+                "<span className="font-medium text-gray-900">{searchQuery}</span>" {t("home.searchResults")}
               </p>
             </div>
           )}
@@ -280,7 +283,7 @@ function HomeContent() {
                             d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                           />
                         </svg>
-                        <span className={likedItems.has(product.productId) ? "text-red-500" : "text-gray-600"}>찜하기</span>
+                        <span className={likedItems.has(product.productId) ? "text-red-500" : "text-gray-600"}>{t("home.addToWishlist")}</span>
                       </div>
                     </button>
                   </div>
@@ -298,12 +301,12 @@ function HomeContent() {
           )}
 
           {/* 검색 결과 없음 */}
-          {!isLoading && !loadError && filteredProducts.length === 0 && <div className="text-center py-12 text-gray-500">{searchQuery ? "검색 결과가 없습니다." : "등록된 상품이 없습니다."}</div>}
+          {!isLoading && !loadError && filteredProducts.length === 0 && <div className="text-center py-12 text-gray-500">{searchQuery ? t("home.noSearchResults") : t("home.noProducts")}</div>}
         </div>
 
         {/* 관리자용 상품 추가 버튼 */}
         {isAdmin && (
-          <button onClick={openAddProductModal} className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-40" title="상품 추가">
+          <button onClick={openAddProductModal} className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-40" title={t("home.addProduct")}>
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
@@ -314,12 +317,12 @@ function HomeContent() {
         {showAddProductModal && (
           <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-xl">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">상품 추가</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">{t("home.addProduct")}</h2>
 
               <form onSubmit={handleAddProduct} className="space-y-4">
                 {/* 상품 이미지 선택 */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">상품 이미지</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t("home.productImage")}</label>
                   <div className="flex flex-col items-center gap-3">
                     {/* 이미지 미리보기 */}
                     {imagePreview ? (
@@ -348,7 +351,7 @@ function HomeContent() {
                             d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                           />
                         </svg>
-                        <span className="mt-2 text-sm text-gray-500">클릭하여 이미지 선택</span>
+                        <span className="mt-2 text-sm text-gray-500">{t("home.clickToSelectImage")}</span>
                         <input type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
                       </label>
                     )}
@@ -357,12 +360,12 @@ function HomeContent() {
 
                 {/* 상품 이름 */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">상품 이름 *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("home.productName")} *</label>
                   <input
                     type="text"
                     value={newProduct.name}
                     onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                    placeholder="상품 이름을 입력하세요"
+                    placeholder={t("home.enterProductName")}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
@@ -370,7 +373,7 @@ function HomeContent() {
 
                 {/* 상품 가격 */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">상품 가격 *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("home.productPrice")} *</label>
                   <input
                     type="text"
                     value={newProduct.price}
@@ -383,7 +386,7 @@ function HomeContent() {
 
                 {/* 상품 재고 */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">상품 재고 *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("home.productStock")} *</label>
                   <input
                     type="number"
                     value={newProduct.stock}
@@ -398,10 +401,10 @@ function HomeContent() {
                 {/* 버튼들 */}
                 <div className="flex gap-3 pt-4">
                   <button type="button" onClick={closeAddProductModal} className="flex-1 px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors">
-                    취소
+                    {t("home.cancel")}
                   </button>
                   <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-                    추가
+                    {t("home.add")}
                   </button>
                 </div>
               </form>

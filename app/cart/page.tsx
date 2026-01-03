@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import "../i18n/config";
 
 // 장바구니 아이템 타입
 interface CartItem {
@@ -73,6 +75,7 @@ function getCartItemKey(id: number, size: string): string {
 }
 
 export default function CartPage() {
+  const { t } = useTranslation();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
   // 컴포넌트 마운트 시 장바구니 데이터 불러오기
@@ -94,7 +97,7 @@ export default function CartPage() {
   };
 
   const handleClearCart = () => {
-    if (confirm("장바구니를 비우시겠습니까?")) {
+    if (confirm(t("cart.confirmClear"))) {
       clearCart();
       setCartItems([]);
     }
@@ -106,7 +109,7 @@ export default function CartPage() {
   if (cartItems.length === 0) {
     return (
       <div className="max-w-[1200px] mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">장바구니</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">{t("cart.title")}</h1>
         <div className="flex flex-col items-center justify-center py-20">
           <svg className="w-24 h-24 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -116,8 +119,8 @@ export default function CartPage() {
               d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.1 5H19M7 13l-1.1 5M7 13l2.5-2.5M17.5 10.5L19 12m-4.5-1.5l2.5 2.5M9 5h.01M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"
             />
           </svg>
-          <p className="text-xl text-gray-600 mb-2">장바구니가 비어있습니다</p>
-          <p className="text-gray-400">상품을 추가해보세요!</p>
+          <p className="text-xl text-gray-600 mb-2">{t("cart.empty")}</p>
+          <p className="text-gray-400">{t("cart.addProducts")}</p>
         </div>
       </div>
     );
@@ -127,10 +130,10 @@ export default function CartPage() {
     <div className="max-w-[1200px] mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">장바구니</h1>
+          <h1 className="text-3xl font-bold text-gray-900">{t("cart.title")}</h1>
         </div>
         <button onClick={handleClearCart} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-          장바구니 비우기
+          {t("cart.clearCart")}
         </button>
       </div>
 
@@ -156,13 +159,13 @@ export default function CartPage() {
             <div className="flex-1">
               <h3 className="text-lg font-medium text-gray-900 mb-2">{item.title}</h3>
               <div className="flex items-center gap-4 text-gray-600 mb-2">
-                <span className="bg-gray-100 px-2 py-1 rounded text-sm font-medium">사이즈: {item.size}</span>
-                <span>단가: {item.price}</span>
+                <span className="bg-gray-100 px-2 py-1 rounded text-sm font-medium">{t("cart.size")}: {item.size}</span>
+                <span>{t("cart.unitPrice")}: {item.price}</span>
               </div>
 
               {/* 수량 조절 */}
               <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">수량:</label>
+                <label className="text-sm text-gray-600">{t("cart.quantity")}:</label>
                 <button
                   onClick={() => handleUpdateQuantity(item.id, item.size, item.quantity - 1)}
                   disabled={item.quantity <= 1}
@@ -188,9 +191,9 @@ export default function CartPage() {
               <button
                 onClick={() => handleRemoveFromCart(item.id, item.size)}
                 className="text-red-500 hover:text-red-700 transition-colors px-3 py-1 rounded border border-red-200 hover:bg-red-50"
-                aria-label="삭제"
+                aria-label={t("cart.delete")}
               >
-                삭제
+                {t("cart.delete")}
               </button>
             </div>
           </div>
@@ -201,19 +204,19 @@ export default function CartPage() {
         <div className="flex justify-end">
           <div className="w-full max-w-md space-y-4">
             <div className="flex justify-between text-lg text-gray-700">
-              <span>총 상품 금액</span>
+              <span>{t("cart.totalProductPrice")}</span>
               <span>{totalPrice.toLocaleString()}원</span>
             </div>
             <div className="flex justify-between text-lg text-gray-700">
-              <span>배송비</span>
+              <span>{t("cart.shippingFee")}</span>
               <span>3,000원</span>
             </div>
             <div className="flex justify-between text-2xl font-bold text-gray-900 pt-4 border-t border-gray-200">
-              <span>총 결제 금액</span>
+              <span>{t("cart.totalPayment")}</span>
               <span>{(totalPrice + 3000).toLocaleString()}원</span>
             </div>
             <button className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg mt-6">
-              주문하기
+              {t("cart.order")}
             </button>
           </div>
         </div>

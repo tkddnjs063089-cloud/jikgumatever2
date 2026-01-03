@@ -2,14 +2,17 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import ProfileEditModal from "./components/ProfileEditModal";
 import OrderHistoryModal from "./components/OrderHistoryModal";
 import { onLogout, startTokenMonitoring } from "../utils/auth";
 import { fetchUserProfile } from "../utils/api";
 import { getApiBaseUrl } from "../utils/api";
+import "../i18n/config";
 
 export default function MyPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,7 +41,7 @@ export default function MyPage() {
         if (!token) {
           console.log("토큰이 없습니다. 로그인 페이지로 이동합니다.");
           if (!hasShownAlertRef.current) {
-            alert("로그인이 필요합니다.");
+            alert(t("mypage.loginRequired"));
             hasShownAlertRef.current = true;
           }
           router.push("/login");
@@ -76,7 +79,7 @@ export default function MyPage() {
           localStorage.removeItem("user");
           localStorage.removeItem("email");
           if (!hasShownAlertRef.current) {
-            alert("세션이 만료되었습니다. 다시 로그인해주세요.");
+            alert(t("mypage.sessionExpired"));
             hasShownAlertRef.current = true;
           }
           router.push("/login");
@@ -136,7 +139,7 @@ export default function MyPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen py-8 flex items-center justify-center">
-        <div className="text-gray-600">로딩 중...</div>
+        <div className="text-gray-600">{t("mypage.loading")}</div>
       </div>
     );
   }
@@ -144,7 +147,7 @@ export default function MyPage() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-4xl mx-auto px-4">
-        <h1 className="text-2xl font-bold mb-8">마이페이지</h1>
+        <h1 className="text-2xl font-bold mb-8">{t("mypage.title")}</h1>
 
         {/* 로그인하지 않은 경우 */}
         {!isLoggedIn ? (
@@ -153,14 +156,14 @@ export default function MyPage() {
               <svg className="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">로그인이 필요합니다</h2>
-              <p className="text-gray-600 mb-6">마이페이지를 이용하시려면 로그인해주세요.</p>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">{t("mypage.loginRequired")}</h2>
+              <p className="text-gray-600 mb-6">{t("mypage.loginRequiredDesc")}</p>
               <div className="flex gap-4">
                 <Link href="/login" className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                  로그인
+                  {t("header.login")}
                 </Link>
                 <Link href="/signup" className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium">
-                  회원가입
+                  {t("header.signup")}
                 </Link>
               </div>
             </div>
@@ -185,29 +188,29 @@ export default function MyPage() {
               {/* 중간: 프로필 정보 */}
               <div className="flex-1 flex flex-col gap-2">
                 <div>
-                  <p className="text-sm text-gray-500 mb-1">이메일</p>
+                  <p className="text-sm text-gray-500 mb-1">{t("mypage.email")}</p>
                   <p className="text-base font-medium">{profile.email || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 mb-1">이름</p>
+                  <p className="text-sm text-gray-500 mb-1">{t("mypage.name")}</p>
                   <p className="text-base font-medium">{profile.nickname || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 mb-1">기본 배송지</p>
-                  <p className="text-base">{profile.address || "등록된 배송지가 없습니다."}</p>
+                  <p className="text-sm text-gray-500 mb-1">{t("mypage.defaultAddress")}</p>
+                  <p className="text-base">{profile.address || t("mypage.noAddress")}</p>
                 </div>
               </div>
 
               {/* 오른쪽: 버튼들 */}
               <div className="flex-shrink-0 flex flex-col gap-3">
                 <button onClick={handleLogout} className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium">
-                  로그아웃
+                  {t("mypage.logout")}
                 </button>
                 <button onClick={() => setIsProfileModalOpen(true)} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                  프로필 수정
+                  {t("mypage.editProfile")}
                 </button>
                 <button onClick={() => setIsOrderHistoryModalOpen(true)} className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium">
-                  주문 내역
+                  {t("mypage.orderHistory")}
                 </button>
               </div>
             </div>

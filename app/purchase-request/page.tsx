@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { analyzeProduct, getApiBaseUrl } from "../utils/api";
+import "../i18n/config";
 
 interface ProductInfo {
   title: string;
@@ -19,6 +21,7 @@ interface UserInfo {
 }
 
 export default function PurchaseRequestPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -45,7 +48,7 @@ export default function PurchaseRequestPage() {
 
         if (!token || !email) {
           console.log("구매요청 페이지: 로그인이 필요합니다.");
-          alert("로그인이 필요합니다.");
+          alert(t("purchaseRequest.loginRequired"));
           router.push("/login");
           return;
         }
@@ -73,7 +76,7 @@ export default function PurchaseRequestPage() {
         }
       } catch (error) {
         console.error("로그인 체크 오류:", error);
-        alert("로그인 상태 확인 중 오류가 발생했습니다.");
+        alert(t("purchaseRequest.loginRequired"));
         router.push("/login");
       } finally {
         setIsAuthLoading(false);
@@ -92,7 +95,7 @@ export default function PurchaseRequestPage() {
     e.preventDefault();
 
     if (!productLink.trim()) {
-      setError("상품 링크를 입력해주세요.");
+      setError(t("purchaseRequest.linkRequired"));
       return;
     }
 
@@ -111,11 +114,11 @@ export default function PurchaseRequestPage() {
     } catch (error) {
       console.error("상품 분석 오류:", error);
 
-      let errorMessage = "상품 정보를 가져오는 중 오류가 발생했습니다.";
+      let errorMessage = t("purchaseRequest.errorFetchingProduct");
 
       if (error instanceof Error) {
         if (error.message.includes("인증")) {
-          errorMessage = "인증이 필요합니다. 다시 로그인해주세요.";
+          errorMessage = t("purchaseRequest.authRequired");
         } else {
           errorMessage = error.message;
         }
@@ -159,12 +162,12 @@ export default function PurchaseRequestPage() {
   // 구매 요청 처리
   const handlePurchaseRequest = async () => {
     if (!productInfo) {
-      alert("상품 정보가 없습니다.");
+      alert(t("purchaseRequest.noProductInfo"));
       return;
     }
 
     if (!userInfo || !userInfo.name || !userInfo.defaultAddress || !userInfo.phone) {
-      alert("배송 정보가 부족합니다. 마이페이지에서 주소와 연락처를 설정해주세요.");
+      alert(t("purchaseRequest.insufficientShippingInfo"));
       router.push("/mypage");
       return;
     }
@@ -174,7 +177,7 @@ export default function PurchaseRequestPage() {
     try {
       const token = localStorage.getItem("token");
       if (!token) {
-        alert("로그인이 필요합니다.");
+        alert(t("purchaseRequest.loginRequired"));
         router.push("/login");
         return;
       }
@@ -226,14 +229,14 @@ export default function PurchaseRequestPage() {
         }
       }
 
-      alert("구매 요청이 완료되었습니다!");
+      alert(t("purchaseRequest.requestCompleted"));
       // 초기화
       setProductInfo(null);
       setProductLink("");
       setQuantity(1);
     } catch (error) {
       console.error("주문 요청 오류:", error);
-      alert(error instanceof Error ? error.message : "주문 요청에 실패했습니다.");
+      alert(error instanceof Error ? error.message : t("purchaseRequest.requestFailed"));
     } finally {
       setIsOrdering(false);
     }
@@ -244,7 +247,7 @@ export default function PurchaseRequestPage() {
     return (
       <div className="max-w-[1200px] mx-auto px-4 py-8">
         <div className="flex items-center justify-center py-20">
-          <div className="text-gray-600">로딩 중...</div>
+          <div className="text-gray-600">{t("purchaseRequest.loading")}</div>
         </div>
       </div>
     );
@@ -257,13 +260,13 @@ export default function PurchaseRequestPage() {
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">구매 요청</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-8">{t("purchaseRequest.title")}</h1>
 
       {/* 상품 링크 입력 폼 */}
       <div className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
         <form onSubmit={handleSubmit} className="space-y-4">
           <label htmlFor="productLink" className="block text-sm font-medium text-gray-700 mb-2">
-            상품 링크
+            {t("purchaseRequest.productLink")}
           </label>
           <div className="flex gap-2">
             <input
@@ -276,7 +279,7 @@ export default function PurchaseRequestPage() {
               placeholder="https://www.shopee.kr/examplelink"
             />
             <button type="submit" className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium whitespace-nowrap">
-              확인
+              {t("purchaseRequest.check")}
             </button>
           </div>
         </form>
@@ -292,7 +295,7 @@ export default function PurchaseRequestPage() {
       {/* 로딩 상태 */}
       {isLoading && (
         <div className="bg-white border border-gray-200 rounded-lg p-12 mb-8 flex items-center justify-center">
-          <div className="text-gray-600">상품 정보를 분석하는 중...</div>
+          <div className="text-gray-600">{t("purchaseRequest.analyzing")}</div>
         </div>
       )}
 
@@ -317,7 +320,7 @@ export default function PurchaseRequestPage() {
               {/* 상단: 수량 조절 */}
               <div className="flex justify-end">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700 mr-2">수량</span>
+                  <span className="text-sm font-medium text-gray-700 mr-2">{t("purchaseRequest.quantity")}</span>
                   <button
                     type="button"
                     onClick={handleDecreaseQuantity}
@@ -343,22 +346,22 @@ export default function PurchaseRequestPage() {
               </div>
 
               <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">상품명</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">{t("purchaseRequest.productName")}</h2>
                 <p className="text-base text-gray-700">{productInfo.title}</p>
               </div>
 
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">가격</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{t("purchaseRequest.price")}</h3>
                 <p className="text-2xl font-bold text-blue-600">{productInfo.price.toLocaleString()}원</p>
                 {quantity > 1 && (
                   <p className="text-sm text-gray-500 mt-1">
-                    총 금액: {(productInfo.price * quantity).toLocaleString()}원 ({quantity}개)
+                    {t("purchaseRequest.totalAmount")}: {(productInfo.price * quantity).toLocaleString()}원 ({quantity}개)
                   </p>
                 )}
               </div>
 
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">상품 ID</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{t("purchaseRequest.productId")}</h3>
                 <p className="text-base text-gray-700">{productInfo.productId}</p>
               </div>
 
@@ -370,7 +373,7 @@ export default function PurchaseRequestPage() {
                   disabled={isOrdering}
                   className="w-full py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isOrdering ? "주문 처리 중..." : "구매 요청"}
+                  {isOrdering ? t("purchaseRequest.ordering") : t("purchaseRequest.purchaseRequest")}
                 </button>
               </div>
             </div>

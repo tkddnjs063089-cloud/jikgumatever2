@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { getApiBaseUrl } from "@/app/utils/api";
+import "../i18n/config";
 
 declare global {
   interface Window {
@@ -20,6 +22,7 @@ declare global {
 }
 
 export default function SignupPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [formData, setFormData] = useState({
     email: "",
@@ -52,7 +55,7 @@ export default function SignupPage() {
   // 주소 찾기 함수
   const handleAddressSearch = () => {
     if (!window.daum) {
-      alert("주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
+      alert(t("signup.addressServiceLoading"));
       return;
     }
 
@@ -104,12 +107,12 @@ export default function SignupPage() {
   // 이메일 중복확인 함수
   const handleEmailCheck = async () => {
     if (!formData.email.trim()) {
-      setErrors({ email: "이메일을 입력해주세요." });
+      setErrors({ email: t("signup.emailRequired") });
       return;
     }
 
     if (!isValidEmail()) {
-      setErrors({ email: "올바른 이메일 형식을 입력해주세요." });
+      setErrors({ email: t("signup.emailInvalid") });
       return;
     }
 
@@ -121,14 +124,14 @@ export default function SignupPage() {
       const response = await fetch(`${baseUrl}/users/check-email?email=${encodeURIComponent(formData.email)}`);
 
       if (!response.ok) {
-        throw new Error("이메일 확인에 실패했습니다.");
+        throw new Error(t("signup.emailCheckFailed"));
       }
 
       const data = await response.json();
       setIsEmailAvailable(data.available);
     } catch (error) {
       setIsEmailAvailable(false);
-      setErrors({ email: "이메일 중복확인 중 오류가 발생했습니다." });
+      setErrors({ email: t("signup.emailCheckError") });
     } finally {
       setIsCheckingEmail(false);
     }
@@ -163,37 +166,37 @@ export default function SignupPage() {
 
     // 이메일 검증
     if (!formData.email.trim()) {
-      newErrors.email = "이메일을 입력해주세요.";
+      newErrors.email = t("signup.emailRequired");
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "올바른 이메일 형식을 입력해주세요.";
+      newErrors.email = t("signup.emailInvalid");
     }
 
     // 비밀번호 검증
     if (!formData.password.trim()) {
-      newErrors.password = "비밀번호를 입력해주세요.";
+      newErrors.password = t("signup.passwordRequired");
     } else if (formData.password.length < 7 || formData.password.length > 20) {
-      newErrors.password = "비밀번호는 7자 이상 20자 이하여야 합니다.";
+      newErrors.password = t("signup.passwordLength");
     } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
-      newErrors.password = "비밀번호에 특수문자가 포함되어야 합니다.";
+      newErrors.password = t("signup.passwordSpecial");
     }
 
     // 비밀번호 확인 검증
     if (!formData.confirmPassword.trim()) {
-      newErrors.confirmPassword = "비밀번호 확인을 입력해주세요.";
+      newErrors.confirmPassword = t("signup.confirmPasswordRequired");
     } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "비밀번호가 일치하지 않습니다.";
+      newErrors.confirmPassword = t("signup.passwordMismatch");
     }
 
     // 이름 검증
     if (!formData.name.trim()) {
-      newErrors.name = "이름을 입력해주세요.";
+      newErrors.name = t("signup.nameRequired");
     } else if (formData.name.trim().length < 2) {
-      newErrors.name = "이름은 최소 2글자 이상이어야 합니다.";
+      newErrors.name = t("signup.nameMin");
     }
 
     // 전화번호 검증 (선택사항이지만 입력된 경우 형식 검증)
     if (formData.phone && !/^[0-9\s\-()]+$/.test(formData.phone)) {
-      newErrors.phone = "올바른 전화번호 형식을 입력해주세요.";
+      newErrors.phone = t("signup.phoneInvalid");
     }
 
     setErrors(newErrors);
@@ -205,19 +208,19 @@ export default function SignupPage() {
 
     // 필수 필드 검증 및 알림
     if (!formData.email.trim()) {
-      alert("이메일을 기입해주세요.");
+      alert(t("signup.emailRequired"));
       return;
     }
     if (!formData.password.trim()) {
-      alert("비밀번호를 기입해주세요.");
+      alert(t("signup.passwordRequired"));
       return;
     }
     if (!formData.confirmPassword.trim()) {
-      alert("비밀번호 확인을 기입해주세요.");
+      alert(t("signup.confirmPasswordRequired"));
       return;
     }
     if (!formData.name.trim()) {
-      alert("이름을 기입해주세요.");
+      alert(t("signup.nameRequired"));
       return;
     }
 
@@ -255,7 +258,7 @@ export default function SignupPage() {
 
       // URL이 올바른 형식인지 확인
       if (!apiBaseUrl.startsWith("http://") && !apiBaseUrl.startsWith("https://")) {
-        throw new Error("API 서버 URL 형식이 올바르지 않습니다.");
+        throw new Error(t("signup.apiUrlError"));
       }
 
       const response = await fetch(`${apiBaseUrl}/auth/signup`, {
@@ -279,18 +282,18 @@ export default function SignupPage() {
       }
 
       if (!response.ok) {
-        throw new Error(data.message || data.error || "회원가입에 실패했습니다.");
+        throw new Error(data.message || data.error || t("signup.signupFailed"));
       }
 
       // 회원가입 성공
-      alert("회원가입이 완료되었습니다!");
+      alert(t("signup.signupSuccess"));
       router.push("/login");
     } catch (error) {
       console.error("회원가입 오류 상세:", error);
       if (error instanceof TypeError && error.message.includes("fetch")) {
-        setErrors({ submit: "네트워크 오류가 발생했습니다. 백엔드 서버 연결을 확인해주세요." });
+        setErrors({ submit: t("signup.networkError") });
       } else {
-        setErrors({ submit: error instanceof Error ? error.message : "회원가입 중 오류가 발생했습니다." });
+        setErrors({ submit: error instanceof Error ? error.message : t("signup.signupError") });
       }
     } finally {
       setIsSubmitting(false);
@@ -301,13 +304,13 @@ export default function SignupPage() {
     <div className="min-h-screen py-12 flex items-center justify-center">
       <div className="w-full max-w-md">
         <div className="bg-white border border-gray-200 rounded-lg p-8 shadow-sm">
-          <h1 className="text-2xl font-bold text-gray-600 mb-8 text-center">회원가입</h1>
+          <h1 className="text-2xl font-bold text-gray-600 mb-8 text-center">{t("signup.title")}</h1>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* 이메일 (필수) */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-400 mb-2">
-                이메일 <span className="text-red-500">*</span>
+                {t("signup.email")} <span className="text-red-500">*</span>
               </label>
               <div className="flex gap-2">
                 <input
@@ -316,7 +319,7 @@ export default function SignupPage() {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`flex-1 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  className={`flex-1 min-w-0 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     errors.email ? "border-red-500" : isValidEmail() ? "border-green-500" : "border-gray-300"
                   }`}
                   placeholder="example@email.com"
@@ -326,9 +329,9 @@ export default function SignupPage() {
                   type="button"
                   onClick={handleEmailCheck}
                   disabled={isCheckingEmail || !formData.email.trim()}
-                  className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium whitespace-nowrap disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="flex-shrink-0 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium text-sm whitespace-nowrap disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {isCheckingEmail ? "확인 중..." : "중복확인"}
+                  {isCheckingEmail ? t("signup.checking") : t("signup.checkEmail")}
                 </button>
               </div>
               {isEmailAvailable === true && (
@@ -336,7 +339,7 @@ export default function SignupPage() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  사용 가능한 이메일입니다.
+                  {t("signup.emailAvailable")}
                 </p>
               )}
               {isEmailAvailable === false && (
@@ -344,7 +347,7 @@ export default function SignupPage() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                  이미 사용 중인 이메일입니다.
+                  {t("signup.emailUnavailable")}
                 </p>
               )}
               {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
@@ -353,7 +356,7 @@ export default function SignupPage() {
                   <svg className={`w-4 h-4 ${isValidEmail() ? "text-green-600" : "text-gray-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span>이메일 형식</span>
+                  <span>{t("signup.emailFormat")}</span>
                 </div>
               )}
               {!errors.email && !isEmailAvailable && !formData.email && (
@@ -361,7 +364,7 @@ export default function SignupPage() {
                   <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span>이메일 형식</span>
+                  <span>{t("signup.emailFormat")}</span>
                 </div>
               )}
             </div>
@@ -369,7 +372,7 @@ export default function SignupPage() {
             {/* 비밀번호 (필수) */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-400 mb-2">
-                비밀번호 <span className="text-red-500">*</span>
+                {t("signup.password")} <span className="text-red-500">*</span>
               </label>
               <input
                 type="password"
@@ -380,7 +383,7 @@ export default function SignupPage() {
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.password ? "border-red-500" : isValidPassword() ? "border-green-500" : "border-gray-300"
                 }`}
-                placeholder="7-20자, 특수문자 포함"
+                placeholder={t("signup.passwordFormat")}
                 autoComplete="new-password"
               />
               {errors.password ? (
@@ -390,14 +393,14 @@ export default function SignupPage() {
                   <svg className={`w-4 h-4 ${isValidPassword() ? "text-green-600" : "text-gray-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span>7-20자, 특수문자 포함</span>
+                  <span>{t("signup.passwordFormat")}</span>
                 </div>
               ) : (
                 <div className="mt-1 text-sm text-gray-400 flex items-center gap-1">
                   <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span>7-20자, 특수문자 포함</span>
+                  <span>{t("signup.passwordFormat")}</span>
                 </div>
               )}
             </div>
@@ -405,7 +408,7 @@ export default function SignupPage() {
             {/* 비밀번호 확인 (필수) */}
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-400 mb-2">
-                비밀번호 확인 <span className="text-red-500">*</span>
+                {t("signup.confirmPassword")} <span className="text-red-500">*</span>
               </label>
               <input
                 type="password"
@@ -416,7 +419,7 @@ export default function SignupPage() {
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.confirmPassword ? "border-red-500" : isPasswordMatch() ? "border-green-500" : "border-gray-300"
                 }`}
-                placeholder="비밀번호를 다시 입력해주세요"
+                placeholder={t("signup.confirmPassword")}
                 autoComplete="new-password"
               />
               {errors.confirmPassword ? (
@@ -426,14 +429,14 @@ export default function SignupPage() {
                   <svg className={`w-4 h-4 ${isPasswordMatch() ? "text-green-600" : "text-gray-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span>비밀번호 일치</span>
+                  <span>{t("signup.passwordMatch")}</span>
                 </div>
               ) : (
                 <div className="mt-1 text-sm text-gray-400 flex items-center gap-1">
                   <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span>비밀번호 일치</span>
+                  <span>{t("signup.passwordMatch")}</span>
                 </div>
               )}
             </div>
@@ -441,7 +444,7 @@ export default function SignupPage() {
             {/* 이름 (필수) */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-400 mb-2">
-                이름 <span className="text-red-500">*</span>
+                {t("signup.name")} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -452,7 +455,7 @@ export default function SignupPage() {
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.name ? "border-red-500" : isValidName() ? "border-green-500" : "border-gray-300"
                 }`}
-                placeholder="이름을 입력하세요"
+                placeholder={t("signup.name")}
                 autoComplete="name"
               />
               {errors.name ? (
@@ -462,14 +465,14 @@ export default function SignupPage() {
                   <svg className={`w-4 h-4 ${isValidName() ? "text-green-600" : "text-gray-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span>최소 2글자</span>
+                  <span>{t("signup.nameMinLength")}</span>
                 </div>
               ) : (
                 <div className="mt-1 text-sm text-gray-400 flex items-center gap-1">
                   <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span>최소 2글자</span>
+                  <span>{t("signup.nameMinLength")}</span>
                 </div>
               )}
             </div>
@@ -477,7 +480,7 @@ export default function SignupPage() {
             {/* 전화번호 (선택) */}
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-400 mb-2">
-                핸드폰 번호
+                {t("signup.phone")}
               </label>
               <div className="flex gap-2">
                 <select
@@ -519,7 +522,7 @@ export default function SignupPage() {
                   value={formData.phone}
                   onChange={handleInputChange}
                   className={`flex-1 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.phone ? "border-red-500" : "border-gray-300"}`}
-                  placeholder="전화번호를 입력하세요"
+                  placeholder={t("signup.phone")}
                   autoComplete="tel"
                 />
               </div>
@@ -528,7 +531,7 @@ export default function SignupPage() {
 
             {/* 기본 배송지 (선택) */}
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">기본 배송지</label>
+              <label className="block text-sm font-medium text-gray-400 mb-2">{t("signup.address")}</label>
 
               {/* 우편번호 */}
               <div className="flex gap-2 mb-2">
@@ -539,10 +542,10 @@ export default function SignupPage() {
                   value={formData.postcode}
                   readOnly
                   className="w-32 px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
-                  placeholder="우편번호"
+                  placeholder={t("signup.postcode")}
                 />
                 <button type="button" onClick={handleAddressSearch} className="px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium whitespace-nowrap">
-                  주소 찾기
+                  {t("signup.searchAddress")}
                 </button>
               </div>
 
@@ -554,7 +557,7 @@ export default function SignupPage() {
                 value={formData.address}
                 readOnly
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 mb-2 cursor-not-allowed"
-                placeholder="주소를 검색해주세요"
+                placeholder={t("signup.enterAddress")}
               />
 
               {/* 상세 주소 */}
@@ -565,7 +568,7 @@ export default function SignupPage() {
                 value={formData.detailAddress}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="상세 주소를 입력하세요"
+                placeholder={t("signup.detailAddress")}
               />
             </div>
 
@@ -578,15 +581,15 @@ export default function SignupPage() {
               disabled={isSubmitting}
               className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "처리 중..." : "회원가입"}
+              {isSubmitting ? t("signup.processing") : t("signup.submit")}
             </button>
           </form>
 
           {/* 로그인 링크 */}
           <div className="mt-6 text-center">
-            <span className="text-gray-400 text-sm">이미 계정이 있으신가요? </span>
+            <span className="text-gray-400 text-sm">{t("signup.hasAccount")} </span>
             <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium text-sm">
-              로그인
+              {t("header.login")}
             </Link>
           </div>
         </div>

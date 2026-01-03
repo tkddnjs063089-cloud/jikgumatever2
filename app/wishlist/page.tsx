@@ -2,6 +2,8 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
+import '../i18n/config';
 
 // 임시: wishlist 함수들 직접 정의
 interface WishlistItem {
@@ -41,6 +43,7 @@ function removeFromWishlist(id: number): void {
 
 // 실제 위시리스트 콘텐츠 컴포넌트 (useSearchParams 사용)
 function WishlistContent() {
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
 
@@ -75,13 +78,13 @@ function WishlistContent() {
   const handleAddToCart = (item: WishlistItem) => {
     // 장바구니 추가 로직 구현 예정
     console.log('장바구니 추가:', item);
-    alert(`${item.title}이(가) 장바구니에 추가되었습니다.`);
+    alert(`${item.title}${t('wishlist.addedToCart')}`);
   };
 
   if (wishlistItems.length === 0) {
     return (
       <div className="max-w-[1200px] mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">찜 목록</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">{t('wishlist.title')}</h1>
         <div className="flex flex-col items-center justify-center py-20">
           <svg
             className="w-24 h-24 text-gray-400 mb-4"
@@ -96,8 +99,8 @@ function WishlistContent() {
               d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
             />
           </svg>
-          <p className="text-xl text-gray-600 mb-2">찜한 상품이 없습니다</p>
-          <p className="text-gray-400">마음에 드는 상품을 찜해보세요!</p>
+          <p className="text-xl text-gray-600 mb-2">{t('wishlist.empty')}</p>
+          <p className="text-gray-400">{t('wishlist.addWishlist')}</p>
         </div>
       </div>
     );
@@ -106,10 +109,10 @@ function WishlistContent() {
   return (
     <div className="max-w-[1200px] mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">찜 목록</h1>
+        <h1 className="text-3xl font-bold text-gray-900">{t('wishlist.title')}</h1>
         {searchQuery && (
           <div className="text-sm text-gray-600">
-            "{searchQuery}" 검색 결과 ({wishlistItems.length}개)
+            "{searchQuery}" {t('wishlist.searchResults')} ({wishlistItems.length}{t('wishlist.items')})
           </div>
         )}
       </div>
@@ -124,7 +127,7 @@ function WishlistContent() {
             <button
               onClick={() => handleRemoveFromWishlist(item.id)}
               className="absolute top-4 right-4 p-2 text-red-500 hover:text-red-700 transition-colors opacity-0 group-hover:opacity-100 z-10"
-              aria-label="찜 해제"
+              aria-label={t('wishlist.removeFromWishlist')}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -164,7 +167,7 @@ function WishlistContent() {
               onClick={() => handleAddToCart(item)}
               className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
             >
-              장바구니 담기
+              {t('wishlist.addToCart')}
             </button>
           </div>
         ))}

@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fetchAllUsers } from '../../utils/api';
+import '../../i18n/config';
 
 interface User {
   email: string;
@@ -13,6 +15,7 @@ interface User {
 }
 
 export default function AdminUsersPage() {
+  const { t } = useTranslation();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -24,7 +27,7 @@ export default function AdminUsersPage() {
         setUsers(userData);
       } catch (error) {
         console.error('사용자 목록 로딩 실패:', error);
-        setError(error instanceof Error ? error.message : '사용자 목록을 불러오는데 실패했습니다.');
+        setError(error instanceof Error ? error.message : t("admin.loadingUsers"));
       } finally {
         setLoading(false);
       }
@@ -53,19 +56,19 @@ export default function AdminUsersPage() {
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-6xl mx-auto px-4">
         <div className="bg-white rounded-lg shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">사용자 관리</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">{t("admin.userManagement")}</h1>
 
           <div className="overflow-x-auto">
             <table className="min-w-full bg-white border border-gray-300">
               <thead>
                 <tr className="bg-gray-50">
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">이메일</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">개인통관 고유번호</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">기본 배송지</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">가입일자</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">프로필사진</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">권한</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">관리</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("admin.email")}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("admin.pcccNumber")}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("admin.defaultAddress")}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("admin.joinDate")}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("admin.profileImage")}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("admin.permission")}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("admin.management")}</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -73,10 +76,10 @@ export default function AdminUsersPage() {
                   <tr key={user.email || index}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.email}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {user.pcccNumber || <span className="text-gray-400">없음</span>}
+                      {user.pcccNumber || <span className="text-gray-400">{t("admin.none")}</span>}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-xs truncate" title={user.defaultAddress || ''}>
-                      {user.defaultAddress || <span className="text-gray-400">없음</span>}
+                      {user.defaultAddress || <span className="text-gray-400">{t("admin.none")}</span>}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {new Date(user.createdAt).toLocaleString('ko-KR')}
@@ -85,11 +88,11 @@ export default function AdminUsersPage() {
                       {user.profileImageUrl ? (
                         <img
                           src={user.profileImageUrl}
-                          alt="프로필"
+                          alt={t("admin.profileImage")}
                           className="w-8 h-8 rounded-full object-cover"
                         />
                       ) : (
-                        <span className="text-gray-400">없음</span>
+                        <span className="text-gray-400">{t("admin.none")}</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -98,12 +101,12 @@ export default function AdminUsersPage() {
                           ? 'bg-red-100 text-red-800'
                           : 'bg-green-100 text-green-800'
                       }`}>
-                        {user.isAdmin ? '관리자' : '일반'}
+                        {user.isAdmin ? t("admin.admin") : t("admin.normal")}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button className="text-blue-600 hover:text-blue-900 mr-4">수정</button>
-                      <button className="text-red-600 hover:text-red-900">삭제</button>
+                      <button className="text-blue-600 hover:text-blue-900 mr-4">{t("admin.edit")}</button>
+                      <button className="text-red-600 hover:text-red-900">{t("admin.delete")}</button>
                     </td>
                   </tr>
                 ))}
