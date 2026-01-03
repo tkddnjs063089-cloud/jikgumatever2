@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getApiBaseUrl } from "@/app/utils/api";
+import { getApiBaseUrl, fetchUserProfile } from "@/app/utils/api";
 
 // 상품 데이터 타입
 interface Product {
@@ -20,6 +20,7 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isPurchasing, setIsPurchasing] = useState(false);
   const [error, setError] = useState("");
 
   // 상품 데이터 가져오기
@@ -128,11 +129,79 @@ export default function ProductDetailPage() {
   };
 
   // 구매하기 함수
-  const handlePurchase = () => {
+  const handlePurchase = async () => {
     if (!product) return;
 
-    // 구매 페이지로 이동 (구매요청 페이지로 이동)
-    router.push("/purchase-request");
+    try {
+      setIsPurchasing(true);
+
+      // 토큰 확인
+      const token = localStorage.getItem("token");
+      const email = localStorage.getItem("email");
+      
+      if (!token || !email) {
+        alert("구매하려면 로그인이 필요합니다.");
+        router.push("/login");
+        return;
+      }
+
+      // 사용자 정보 가져오기
+      const userInfo = await fetchUserProfile(email);
+      
+      if (!userInfo.name || !userInfo.defaultAddress || !userInfo.phone) {
+        alert("배송 정보가 부족합니다. 마이페이지에서 주소와 연락처를 설정해주세요.");
+        router.push("/mypage");
+        return;
+      }
+
+      const baseUrl = getApiBaseUrl();
+
+      // 주문 데이터 구성
+      const orderData = {
+        items: [
+          {
+            productId: product.productId,
+            quantity: quantity,
+          },
+        ],
+        shippingInfo: {
+          recipientName: userInfo.name,
+          recipientAddress: userInfo.defaultAddress,
+          recipientPhone: userInfo.phone,
+          shippingCompany: "CJ대한통운",
+          trackingNumber: "",
+        },
+      };
+
+      // 주문 생성 API 호출
+      const response = await fetch(`${baseUrl}/orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          alert("로그인이 필요합니다.");
+          router.push("/login");
+          return;
+        }
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "주문 생성에 실패했습니다.");
+      }
+
+      alert("주문이 완료되었습니다!");
+      // 주문 완료 후 홈으로 이동하거나 주문 내역 페이지로 이동할 수 있습니다
+      router.push("/");
+    } catch (error) {
+      console.error("구매 실패:", error);
+      alert(error instanceof Error ? error.message : "구매에 실패했습니다.");
+    } finally {
+      setIsPurchasing(false);
+    }
   };
 
   // 로딩 상태
@@ -245,8 +314,12 @@ export default function ProductDetailPage() {
                 </button>
 
                 {/* 구매하기 버튼 */}
-                <button onClick={handlePurchase} className="w-full py-4 px-6 bg-red-600 text-white rounded-lg font-semibold text-lg hover:bg-red-700 transition-colors">
-                  구매하기
+                <button
+                  onClick={handlePurchase}
+                  disabled={isPurchasing}
+                  className="w-full py-4 px-6 bg-red-600 text-white rounded-lg font-semibold text-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isPurchasing ? "주문 처리 중..." : "구매하기"}
                 </button>
               </div>
 

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { getApiBaseUrl } from "../utils/api";
+import { getApiBaseUrl, fetchUserProfile } from "../utils/api";
 import "../i18n/config";
 
 // 백엔드 응답 타입
@@ -157,21 +157,16 @@ export default function CartPage() {
     }, 0);
   };
 
-  // 주문하기 - 모든 장바구니 아이템의 수량을 백엔드에 동기화
-  const handleOrder = async () => {
+  // 수량 동기화 - 모든 장바구니 아이템의 수량을 백엔드에 동기화
+  const syncQuantities = async () => {
     if (!cartData || !cartData.cartItems || cartData.cartItems.length === 0) {
       return;
     }
 
-    setIsOrdering(true);
-    setError("");
-
     try {
       const token = localStorage.getItem("token");
       if (!token) {
-        alert("로그인이 필요합니다.");
-        router.push("/login");
-        return;
+        throw new Error("로그인이 필요합니다.");
       }
 
       const baseUrl = getApiBaseUrl();
@@ -201,6 +196,108 @@ export default function CartPage() {
 
       // 모든 업데이트 요청이 완료될 때까지 대기
       await Promise.all(updatePromises);
+    } catch (err) {
+      console.error("수량 동기화 실패:", err);
+      throw err;
+    }
+  };
+
+  // UUID 생성 함수
+  const generateUUID = () => {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === "x" ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  };
+
+  // 주문 처리 - 백엔드에 주문 요청
+  const createOrder = async () => {
+    if (!cartData || !cartData.cartItems || cartData.cartItems.length === 0) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const email = localStorage.getItem("email");
+      
+      if (!token || !email) {
+        throw new Error("로그인이 필요합니다.");
+      }
+
+      // 사용자 정보 가져오기
+      const userInfo = await fetchUserProfile(email);
+      
+      if (!userInfo.name || !userInfo.defaultAddress || !userInfo.phone) {
+        alert("배송 정보가 부족합니다. 마이페이지에서 주소와 연락처를 설정해주세요.");
+        router.push("/mypage");
+        return;
+      }
+
+      const baseUrl = getApiBaseUrl();
+
+      // 주문 데이터 구성
+      const orderData = {
+        items: cartData.cartItems.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        })),
+        shippingInfo: {
+          recipientName: userInfo.name,
+          recipientAddress: userInfo.defaultAddress,
+          recipientPhone: userInfo.phone,
+          shippingCompany: "CJ대한통운",
+          trackingNumber: "",
+        },
+      };
+
+      // 주문 생성 API 호출
+      const response = await fetch(`${baseUrl}/orders/from-cart`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("로그인이 필요합니다.");
+        }
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "주문 생성에 실패했습니다.");
+      }
+
+      return await response.json();
+    } catch (err) {
+      console.error("주문 생성 실패:", err);
+      throw err;
+    }
+  };
+
+  // 주문하기 - 수량 동기화 후 주문 처리
+  const handleOrder = async () => {
+    if (!cartData || !cartData.cartItems || cartData.cartItems.length === 0) {
+      return;
+    }
+
+    setIsOrdering(true);
+    setError("");
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("로그인이 필요합니다.");
+        router.push("/login");
+        return;
+      }
+
+      // 1. 먼저 수량 동기화
+      await syncQuantities();
+
+      // 2. 주문 처리
+      await createOrder();
 
       // 성공 메시지 및 장바구니 새로고침
       alert("주문이 완료되었습니다!");
